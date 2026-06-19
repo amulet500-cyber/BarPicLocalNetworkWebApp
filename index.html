@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ระบบสแกนสินค้า ศิษย์พี่</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 10px; }
+        
+        /* ขยับส่วนสแกนไปไว้ด้านบน */
+        #reader { width: 100%; max-width: 500px; margin: 0 auto; }
+        
+        #cart { 
+            margin: 10px auto; 
+            width: 90%; 
+            max-width: 500px; 
+            border: 2px solid #3498db; 
+            padding: 10px;
+            border-radius: 10px;
+            background: white;
+        }
+        
+        #itemList { 
+            height: 250px; 
+            overflow-y: auto; 
+            text-align: left;
+            list-style-type: none;
+            padding: 5px;
+            background: #f9f9f9;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+        }
+        
+        #itemList li { padding: 5px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 1.1em; }
+        
+        .btn-finish { 
+            width: 100%; padding: 15px; font-size: 1.3em; background-color: #27ae60; 
+            color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>ระบบสแกนสินค้า ศิษย์พี่</h1>
+    <div id="reader"></div>
+    
+    <div id="cart">
+        <h3>ตะกร้าสินค้า</h3>
+        <ul id="itemList"></ul>
+        <button class="btn-finish" onclick="finishSale()">จบการขาย</button>
+    </div>
+
+    <script>
+        let scannedItems = []; 
+        
+        function playBeep() {
+            const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+            audio.play();
+        }
+
+        // ปรับ qrbox ให้เล็กลง (width: 250, height: 100) เพื่อเหลือพื้นที่จอ
+        let html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
+            fps: 15, qrbox: { width: 250, height: 100 }, facingMode: "environment" 
+        });
+
+        function onScanSuccess(decodedText, decodedResult) {
+            playBeep();
+            
+            scannedItems.push(decodedText);
+            
+            let li = document.createElement("li");
+            li.innerText = scannedItems.length + ". " + decodedText; 
+            
+            let list = document.getElementById("itemList");
+            list.appendChild(li);
+            list.scrollTop = list.scrollHeight; 
+
+            html5QrcodeScanner.pause();
+            setTimeout(() => { html5QrcodeScanner.resume(); }, 1500); 
+        }
+
+        function finishSale() {
+            if (scannedItems.length === 0) return alert("ยังไม่มีสินค้าครับศิษย์พี่!");
+            
+            alert("บันทึกสินค้า " + scannedItems.length + " รายการแล้วครับ!");
+            scannedItems = [];
+            document.getElementById("itemList").innerHTML = "";
+        }
+
+        html5QrcodeScanner.render(onScanSuccess);
+    </script>
+</body>
+</html>
