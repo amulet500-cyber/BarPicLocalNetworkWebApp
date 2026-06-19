@@ -5,10 +5,7 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body { font-family: sans-serif; text-align: center; padding: 10px; }
-        
-        /* ขยับส่วนสแกนไปไว้ด้านบน */
         #reader { width: 100%; max-width: 500px; margin: 0 auto; }
-        
         #cart { 
             margin: 10px auto; 
             width: 90%; 
@@ -18,7 +15,6 @@
             border-radius: 10px;
             background: white;
         }
-        
         #itemList { 
             height: 250px; 
             overflow-y: auto; 
@@ -29,9 +25,7 @@
             border: 1px solid #ddd;
             margin-bottom: 10px;
         }
-        
         #itemList li { padding: 5px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 1.1em; }
-        
         .btn-finish { 
             width: 100%; padding: 15px; font-size: 1.3em; background-color: #27ae60; 
             color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
@@ -57,14 +51,12 @@
             audio.play();
         }
 
-        // ปรับ qrbox ให้เล็กลง (width: 250, height: 100) เพื่อเหลือพื้นที่จอ
         let html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
             fps: 15, qrbox: { width: 250, height: 100 }, facingMode: "environment" 
         });
 
         function onScanSuccess(decodedText, decodedResult) {
             playBeep();
-            
             scannedItems.push(decodedText);
             
             let li = document.createElement("li");
@@ -81,9 +73,22 @@
         function finishSale() {
             if (scannedItems.length === 0) return alert("ยังไม่มีสินค้าครับศิษย์พี่!");
             
-            alert("บันทึกสินค้า " + scannedItems.length + " รายการแล้วครับ!");
-            scannedItems = [];
-            document.getElementById("itemList").innerHTML = "";
+            // เปลี่ยน 192.168.1.xxx ให้เป็น IP ของคอมที่ร้าน (ดูจาก ipconfig)
+            fetch('http://192.168.1.192:5000/save-data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: scannedItems })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert("ส่งข้อมูลเข้าคอมร้านเรียบร้อยครับศิษย์พี่!");
+                scannedItems = [];
+                document.getElementById("itemList").innerHTML = "";
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("เชื่อมต่อคอมร้านไม่ได้ครับ ตรวจสอบ IP ให้ดีนะครับ!");
+            });
         }
 
         html5QrcodeScanner.render(onScanSuccess);
