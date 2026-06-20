@@ -6,63 +6,22 @@
     <style>
         body { font-family: sans-serif; text-align: center; padding: 10px; }
         #reader { width: 100%; max-width: 500px; margin: 0 auto; }
-        
-        /* ซ่อนเมนูไฟล์ */
-        #reader__filescan_input, 
-        #reader__filescan_input + span,
-        #reader__filescan_input + a { display: none !important; }
-
-        /* ปุ่มสแกน */
-        #reader button {
-            padding: 15px 30px !important;
-            font-size: 1.2em !important;
-            font-weight: bold !important;
-            border: none !important;
-            border-radius: 8px !important;
-            cursor: pointer !important;
-            margin: 10px 5px !important;
-            color: white !important;
-            background-image: none !important;
-            box-shadow: none !important;
-            text-shadow: none !important;
-        }
+        #reader__filescan_input, #reader__filescan_input + span, #reader__filescan_input + a { display: none !important; }
+        #reader button { padding: 15px 30px !important; font-size: 1.2em !important; font-weight: bold !important; border: none !important; border-radius: 8px !important; cursor: pointer !important; margin: 10px 5px !important; color: white !important; background-image: none !important; box-shadow: none !important; text-shadow: none !important; }
         #reader button[title="Stop scanning"] { background-color: #ff4757 !important; }
         #reader button[title="Start scanning"] { background-color: #2ed573 !important; }
-        
-        /* กล่องตะกร้า */
-        #cart { 
-            margin: 10px auto; width: 90%; max-width: 500px; 
-            border: 2px solid #3498db; padding: 10px; border-radius: 10px; background: white;
-        }
-        #itemList { 
-            height: 250px; overflow-y: auto; text-align: left;
-            list-style-type: none; padding: 5px; background: #f9f9f9;
-            border: 1px solid #ddd; margin-bottom: 10px;
-        }
-        #itemList li { 
-            padding: 8px; border-bottom: 1px solid #eee; 
-            font-family: monospace; font-size: 1.1em; 
-            display: flex; align-items: center; justify-content: space-between;
-        }
-        #itemList img { width: 50px; height: 35px; margin-right: 10px; border: 1px solid #ccc; }
-        
+        #cart { margin: 10px auto; width: 90%; max-width: 500px; border: 2px solid #3498db; padding: 10px; border-radius: 10px; background: white; }
+        #itemList { height: 250px; overflow-y: auto; text-align: left; list-style-type: none; padding: 5px; background: #f9f9f9; border: 1px solid #ddd; margin-bottom: 10px; }
+        #itemList li { padding: 8px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 1.1em; display: flex; align-items: center; justify-content: space-between; }
         .price-input { width: 70px; padding: 5px; font-weight: bold; text-align: center; }
-        .btn-finish { 
-            width: 100%; padding: 15px; font-size: 1.3em; background-color: #27ae60; 
-            color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-bottom: 10px;
-        }
-        .btn-export { 
-            width: 100%; padding: 10px; font-size: 1em; background-color: #8e44ad; 
-            color: white; border: none; border-radius: 8px; cursor: pointer; 
-        }
+        .btn-finish { width: 100%; padding: 15px; font-size: 1.3em; background-color: #27ae60; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
+        .btn-export { width: 100%; padding: 10px; font-size: 1em; background-color: #8e44ad; color: white; border: none; border-radius: 8px; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <h1>ระบบสแกนสินค้า ศิษย์พี่</h1>
     <div id="reader"></div>
-    <video id="cameraStream" style="display:none;"></video>
-    <canvas id="snapshotCanvas" style="display:none;"></canvas>
     
     <div id="cart">
         <h3>ตะกร้าสินค้า</h3>
@@ -76,16 +35,7 @@
 
         function playBeep() {
             const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
-            audio.play();
-        }
-
-        function takeSnapshot() {
-            const video = document.getElementsByTagName('video')[0];
-            const canvas = document.getElementById('snapshotCanvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0);
-            return canvas.toDataURL('image/jpeg');
+            audio.play().catch(() => {});
         }
 
         function onScanSuccess(decodedText, decodedResult) {
@@ -96,22 +46,21 @@
             .then(res => res.json())
             .then(data => addToList(decodedText, data.price))
             .catch(() => {
-                // ถ้าต่อไม่ได้ ใช้ราคาจากมือถือ
+                // ถ้า Server ไม่ว่าง/ไม่เปิด ให้ดึงจาก LocalStorage หรือให้เป็น 20
                 let localPrice = localStorage.getItem('prod_' + decodedText) || "20";
                 addToList(decodedText, localPrice);
             });
 
             html5QrcodeScanner.pause();
-            setTimeout(() => { html5QrcodeScanner.resume(); }, 1500); 
+            setTimeout(() => { html5QrcodeScanner.resume(); }, 2000); 
         }
 
         function addToList(code, price) {
-            let imgData = takeSnapshot();
             let li = document.createElement("li");
             li.setAttribute("data-code", code);
+            // แสดงรหัสและช่องใส่ราคา
             li.innerHTML = `
-                <img src="${imgData}"> 
-                <span>${code}</span>
+                <span>📦 ${code}</span>
                 <span><input type="number" class="price-input" value="${price}" onchange="updateLocal('${code}', this.value)"> บ.</span>
             `;
             let list = document.getElementById("itemList");
@@ -125,12 +74,16 @@
 
         function exportPhoneData() {
             let data = "";
+            let hasData = false;
             for (let i = 0; i < localStorage.length; i++) {
                 let key = localStorage.key(i);
                 if (key.startsWith('prod_')) {
                     data += `${key.replace('prod_', '')}|${localStorage.getItem(key)}\n`;
+                    hasData = true;
                 }
             }
+            if (!hasData) return alert("ยังไม่มีข้อมูลสินค้าใหม่ในมือถือครับ");
+            
             let blob = new Blob([data], {type: "text/plain"});
             let a = document.createElement("a");
             a.href = window.URL.createObjectURL(blob);
@@ -156,15 +109,15 @@
             })
             .then(res => res.json())
             .then(() => {
-                alert("บันทึกเรียบร้อย!");
+                alert("ส่งข้อมูลเข้าคอมร้านเรียบร้อยครับ!");
                 document.getElementById("itemList").innerHTML = "";
             })
-            .catch(() => alert("บันทึกในมือถือเรียบร้อย (Server ไม่ตอบสนอง)"));
+            .catch(() => alert("บันทึกในมือถือเรียบร้อย (Server ปิดอยู่)"));
         }
 
         window.onload = () => {
             html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
-                fps: 15, qrbox: { width: 250, height: 100 }, facingMode: "environment" 
+                fps: 10, qrbox: { width: 250, height: 100 }, facingMode: "environment" 
             });
             html5QrcodeScanner.render(onScanSuccess);
         };
