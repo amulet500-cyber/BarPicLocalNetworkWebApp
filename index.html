@@ -6,6 +6,36 @@
     <style>
         body { font-family: sans-serif; text-align: center; padding: 10px; }
         #reader { width: 100%; max-width: 500px; margin: 0 auto; }
+        
+        /* ซ่อนข้อความ Scan an Image File */
+        #reader__filescan_input, 
+        #reader__filescan_input + span,
+        #reader__filescan_input + a { display: none !important; }
+
+        /* ปรับแต่งปุ่ม Start / Stop Scanning ให้ใหญ่และมีสีสดชัด */
+        #reader button {
+            padding: 15px 30px !important;
+            font-size: 1.2em !important;
+            font-weight: bold !important;
+            border: none !important;
+            border-radius: 8px !important;
+            cursor: pointer !important;
+            margin: 10px 5px !important;
+            color: white !important;
+            /* บังคับลบค่าสีเดิมและภาพพื้นหลังเดิมออกให้หมด */
+            background-image: none !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+        }
+        /* ปุ่ม Stop สีแดงสด */
+        #reader button[title="Stop scanning"] { 
+            background-color: #ff4757 !important; 
+        }
+        /* ปุ่ม Start สีเขียวสด (ให้เด่นจากปุ่มอื่น) */
+        #reader button[title="Start scanning"] { 
+            background-color: #2ed573 !important; 
+        }
+        
         #cart { 
             margin: 10px auto; width: 90%; max-width: 500px; 
             border: 2px solid #3498db; padding: 10px; border-radius: 10px; background: white;
@@ -15,7 +45,6 @@
             list-style-type: none; padding: 5px; background: #f9f9f9;
             border: 1px solid #ddd; margin-bottom: 10px;
         }
-        /* ปรับสไตล์ลิสต์ให้แสดงรูปและเลขคู่กัน */
         #itemList li { 
             padding: 5px; border-bottom: 1px solid #eee; 
             font-family: monospace; font-size: 1.1em; 
@@ -43,13 +72,13 @@
 
     <script>
         let scannedItems = []; 
-        
+        let html5QrcodeScanner;
+
         function playBeep() {
             const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
             audio.play();
         }
 
-        // ฟังก์ชันถ่ายรูป
         function takeSnapshot() {
             const video = document.getElementsByTagName('video')[0];
             const canvas = document.getElementById('snapshotCanvas');
@@ -59,23 +88,27 @@
             return canvas.toDataURL('image/jpeg');
         }
 
-        let html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
-            fps: 15, qrbox: { width: 250, height: 100 }, facingMode: "environment" 
-        });
+        function startScanner(cameraId) {
+            html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
+                fps: 15, qrbox: { width: 250, height: 100 }, facingMode: "environment" 
+            });
+            html5QrcodeScanner.render(onScanSuccess);
+            
+            setTimeout(() => {
+                const cameraSelect = document.querySelector('select');
+                if (cameraSelect && cameraId) {
+                    cameraSelect.value = cameraId;
+                }
+            }, 1000);
+        }
 
         function onScanSuccess(decodedText, decodedResult) {
             playBeep();
-            
-            // ถ่ายรูปเก็บไว้
             let imgData = takeSnapshot();
-            
-            // บันทึกทั้งเลขและรูป
             scannedItems.push({ code: decodedText, img: imgData });
             
             let li = document.createElement("li");
-            // แสดงรูปและเลข
             li.innerHTML = `<img src="${imgData}"> ${scannedItems.length}. ${decodedText}`;
-            
             let list = document.getElementById("itemList");
             list.appendChild(li);
             list.scrollTop = list.scrollHeight; 
@@ -86,7 +119,6 @@
 
         function finishSale() {
             if (scannedItems.length === 0) return alert("ยังไม่มีสินค้าครับศิษย์พี่!");
-            
             fetch('http://192.168.1.192:5000/save-data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -98,13 +130,20 @@
                 scannedItems = [];
                 document.getElementById("itemList").innerHTML = "";
             })
-            .catch(error => {
-                console.error('Error:', error);
-                alert("เชื่อมต่อคอมร้านไม่ได้ครับ ตรวจสอบ IP ให้ดีนะครับ!");
-            });
+            .catch(error => { alert("เชื่อมต่อคอมร้านไม่ได้ครับ ตรวจสอบ IP ให้ดีนะครับ!"); });
         }
 
-        html5QrcodeScanner.render(onScanSuccess);
+        window.onload = () => {
+            Html5Qrcode.getCameras().then(devices => {
+                startScanner(localStorage.getItem('selectedCameraId'));
+            });
+
+            document.addEventListener('change', (e) => {
+                if (e.target.tagName === 'SELECT') {
+                    localStorage.setItem('selectedCameraId', e.target.value);
+                }
+            });
+        };
     </script>
 </body>
 </html>
