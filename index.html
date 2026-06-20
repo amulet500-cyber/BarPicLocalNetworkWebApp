@@ -7,25 +7,21 @@
         body { font-family: sans-serif; text-align: center; padding: 10px; }
         #reader { width: 100%; max-width: 500px; margin: 0 auto; }
         #cart { 
-            margin: 10px auto; 
-            width: 90%; 
-            max-width: 500px; 
-            border: 2px solid #3498db; 
-            padding: 10px;
-            border-radius: 10px;
-            background: white;
+            margin: 10px auto; width: 90%; max-width: 500px; 
+            border: 2px solid #3498db; padding: 10px; border-radius: 10px; background: white;
         }
         #itemList { 
-            height: 250px; 
-            overflow-y: auto; 
-            text-align: left;
-            list-style-type: none;
-            padding: 5px;
-            background: #f9f9f9;
-            border: 1px solid #ddd;
-            margin-bottom: 10px;
+            height: 250px; overflow-y: auto; text-align: left;
+            list-style-type: none; padding: 5px; background: #f9f9f9;
+            border: 1px solid #ddd; margin-bottom: 10px;
         }
-        #itemList li { padding: 5px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 1.1em; }
+        /* ปรับสไตล์ลิสต์ให้แสดงรูปและเลขคู่กัน */
+        #itemList li { 
+            padding: 5px; border-bottom: 1px solid #eee; 
+            font-family: monospace; font-size: 1.1em; 
+            display: flex; align-items: center; 
+        }
+        #itemList img { width: 60px; height: 45px; margin-right: 10px; border: 1px solid #ccc; }
         .btn-finish { 
             width: 100%; padding: 15px; font-size: 1.3em; background-color: #27ae60; 
             color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
@@ -36,6 +32,8 @@
 
     <h1>ระบบสแกนสินค้า ศิษย์พี่</h1>
     <div id="reader"></div>
+    <video id="cameraStream" style="display:none;"></video>
+    <canvas id="snapshotCanvas" style="display:none;"></canvas>
     
     <div id="cart">
         <h3>ตะกร้าสินค้า</h3>
@@ -51,16 +49,32 @@
             audio.play();
         }
 
+        // ฟังก์ชันถ่ายรูป
+        function takeSnapshot() {
+            const video = document.getElementsByTagName('video')[0];
+            const canvas = document.getElementById('snapshotCanvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            return canvas.toDataURL('image/jpeg');
+        }
+
         let html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
             fps: 15, qrbox: { width: 250, height: 100 }, facingMode: "environment" 
         });
 
         function onScanSuccess(decodedText, decodedResult) {
             playBeep();
-            scannedItems.push(decodedText);
+            
+            // ถ่ายรูปเก็บไว้
+            let imgData = takeSnapshot();
+            
+            // บันทึกทั้งเลขและรูป
+            scannedItems.push({ code: decodedText, img: imgData });
             
             let li = document.createElement("li");
-            li.innerText = scannedItems.length + ". " + decodedText; 
+            // แสดงรูปและเลข
+            li.innerHTML = `<img src="${imgData}"> ${scannedItems.length}. ${decodedText}`;
             
             let list = document.getElementById("itemList");
             list.appendChild(li);
@@ -73,7 +87,6 @@
         function finishSale() {
             if (scannedItems.length === 0) return alert("ยังไม่มีสินค้าครับศิษย์พี่!");
             
-            // เปลี่ยน 192.168.1.xxx ให้เป็น IP ของคอมที่ร้าน (ดูจาก ipconfig)
             fetch('http://192.168.1.192:5000/save-data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
