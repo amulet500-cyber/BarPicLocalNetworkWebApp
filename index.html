@@ -7,12 +7,12 @@
         body { font-family: sans-serif; text-align: center; padding: 10px; }
         #reader { width: 100%; max-width: 500px; margin: 0 auto; }
         
-        /* ซ่อนข้อความ Scan an Image File */
+        /* ซ่อนเมนูไฟล์ */
         #reader__filescan_input, 
         #reader__filescan_input + span,
         #reader__filescan_input + a { display: none !important; }
 
-        /* ปรับแต่งปุ่ม Start / Stop Scanning ให้ใหญ่และมีสีสดชัด */
+        /* ปุ่มสแกน */
         #reader button {
             padding: 15px 30px !important;
             font-size: 1.2em !important;
@@ -22,20 +22,14 @@
             cursor: pointer !important;
             margin: 10px 5px !important;
             color: white !important;
-            /* บังคับลบค่าสีเดิมและภาพพื้นหลังเดิมออกให้หมด */
             background-image: none !important;
             box-shadow: none !important;
             text-shadow: none !important;
         }
-        /* ปุ่ม Stop สีแดงสด */
-        #reader button[title="Stop scanning"] { 
-            background-color: #ff4757 !important; 
-        }
-        /* ปุ่ม Start สีเขียวสด (ให้เด่นจากปุ่มอื่น) */
-        #reader button[title="Start scanning"] { 
-            background-color: #2ed573 !important; 
-        }
+        #reader button[title="Stop scanning"] { background-color: #ff4757 !important; }
+        #reader button[title="Start scanning"] { background-color: #2ed573 !important; }
         
+        /* กล่องตะกร้า */
         #cart { 
             margin: 10px auto; width: 90%; max-width: 500px; 
             border: 2px solid #3498db; padding: 10px; border-radius: 10px; background: white;
@@ -46,14 +40,20 @@
             border: 1px solid #ddd; margin-bottom: 10px;
         }
         #itemList li { 
-            padding: 5px; border-bottom: 1px solid #eee; 
+            padding: 8px; border-bottom: 1px solid #eee; 
             font-family: monospace; font-size: 1.1em; 
-            display: flex; align-items: center; 
+            display: flex; align-items: center; justify-content: space-between;
         }
-        #itemList img { width: 60px; height: 45px; margin-right: 10px; border: 1px solid #ccc; }
+        #itemList img { width: 50px; height: 35px; margin-right: 10px; border: 1px solid #ccc; }
+        
+        .price-input { width: 70px; padding: 5px; font-weight: bold; text-align: center; }
         .btn-finish { 
             width: 100%; padding: 15px; font-size: 1.3em; background-color: #27ae60; 
-            color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
+            color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-bottom: 10px;
+        }
+        .btn-export { 
+            width: 100%; padding: 10px; font-size: 1em; background-color: #8e44ad; 
+            color: white; border: none; border-radius: 8px; cursor: pointer; 
         }
     </style>
 </head>
@@ -68,10 +68,10 @@
         <h3>ตะกร้าสินค้า</h3>
         <ul id="itemList"></ul>
         <button class="btn-finish" onclick="finishSale()">จบการขาย</button>
+        <button class="btn-export" onclick="exportPhoneData()">ดึงข้อมูล PRODUCT_Phone.TXT</button>
     </div>
 
     <script>
-        let scannedItems = []; 
         let html5QrcodeScanner;
 
         function playBeep() {
@@ -88,61 +88,85 @@
             return canvas.toDataURL('image/jpeg');
         }
 
-        function startScanner(cameraId) {
-            html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
-                fps: 15, qrbox: { width: 250, height: 100 }, facingMode: "environment" 
-            });
-            html5QrcodeScanner.render(onScanSuccess);
-            
-            setTimeout(() => {
-                const cameraSelect = document.querySelector('select');
-                if (cameraSelect && cameraId) {
-                    cameraSelect.value = cameraId;
-                }
-            }, 1000);
-        }
-
         function onScanSuccess(decodedText, decodedResult) {
             playBeep();
-            let imgData = takeSnapshot();
-            scannedItems.push({ code: decodedText, img: imgData });
             
-            let li = document.createElement("li");
-            li.innerHTML = `<img src="${imgData}"> ${scannedItems.length}. ${decodedText}`;
-            let list = document.getElementById("itemList");
-            list.appendChild(li);
-            list.scrollTop = list.scrollHeight; 
+            // เช็ค Server
+            fetch(`http://192.168.1.192:5000/get-price?code=${decodedText}`)
+            .then(res => res.json())
+            .then(data => addToList(decodedText, data.price))
+            .catch(() => {
+                // ถ้าต่อไม่ได้ ใช้ราคาจากมือถือ
+                let localPrice = localStorage.getItem('prod_' + decodedText) || "20";
+                addToList(decodedText, localPrice);
+            });
 
             html5QrcodeScanner.pause();
             setTimeout(() => { html5QrcodeScanner.resume(); }, 1500); 
         }
 
+        function addToList(code, price) {
+            let imgData = takeSnapshot();
+            let li = document.createElement("li");
+            li.setAttribute("data-code", code);
+            li.innerHTML = `
+                <img src="${imgData}"> 
+                <span>${code}</span>
+                <span><input type="number" class="price-input" value="${price}" onchange="updateLocal('${code}', this.value)"> บ.</span>
+            `;
+            let list = document.getElementById("itemList");
+            list.appendChild(li);
+            list.scrollTop = list.scrollHeight;
+        }
+
+        function updateLocal(code, price) {
+            localStorage.setItem('prod_' + code, price);
+        }
+
+        function exportPhoneData() {
+            let data = "";
+            for (let i = 0; i < localStorage.length; i++) {
+                let key = localStorage.key(i);
+                if (key.startsWith('prod_')) {
+                    data += `${key.replace('prod_', '')}|${localStorage.getItem(key)}\n`;
+                }
+            }
+            let blob = new Blob([data], {type: "text/plain"});
+            let a = document.createElement("a");
+            a.href = window.URL.createObjectURL(blob);
+            a.download = "PRODUCT_Phone.TXT";
+            a.click();
+        }
+
         function finishSale() {
-            if (scannedItems.length === 0) return alert("ยังไม่มีสินค้าครับศิษย์พี่!");
+            let items = [];
+            document.querySelectorAll("#itemList li").forEach(li => {
+                items.push({ 
+                    code: li.getAttribute("data-code"), 
+                    price: li.querySelector(".price-input").value 
+                });
+            });
+
+            if (items.length === 0) return alert("ยังไม่มีสินค้าครับศิษย์พี่!");
+
             fetch('http://192.168.1.192:5000/save-data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: scannedItems })
+                body: JSON.stringify({ items: items })
             })
-            .then(response => response.json())
-            .then(data => {
-                alert("ส่งข้อมูลเข้าคอมร้านเรียบร้อยครับศิษย์พี่!");
-                scannedItems = [];
+            .then(res => res.json())
+            .then(() => {
+                alert("บันทึกเรียบร้อย!");
                 document.getElementById("itemList").innerHTML = "";
             })
-            .catch(error => { alert("เชื่อมต่อคอมร้านไม่ได้ครับ ตรวจสอบ IP ให้ดีนะครับ!"); });
+            .catch(() => alert("บันทึกในมือถือเรียบร้อย (Server ไม่ตอบสนอง)"));
         }
 
         window.onload = () => {
-            Html5Qrcode.getCameras().then(devices => {
-                startScanner(localStorage.getItem('selectedCameraId'));
+            html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
+                fps: 15, qrbox: { width: 250, height: 100 }, facingMode: "environment" 
             });
-
-            document.addEventListener('change', (e) => {
-                if (e.target.tagName === 'SELECT') {
-                    localStorage.setItem('selectedCameraId', e.target.value);
-                }
-            });
+            html5QrcodeScanner.render(onScanSuccess);
         };
     </script>
 </body>
