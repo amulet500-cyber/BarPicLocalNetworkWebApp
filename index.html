@@ -6,49 +6,16 @@
     <style>
         body { font-family: sans-serif; text-align: center; padding: 10px; }
         #reader { width: 100%; max-width: 500px; margin: 0 auto; }
-
-        /* ซ่อนเมนูไฟล์ */
-        #reader__filescan_input, 
-        #reader__filescan_input + span,
-        #reader__filescan_input + a { display: none !important; }
-
-        /* ปุ่มสแกน */
-        #reader button {
-            padding: 15px 30px !important;
-            font-size: 1.2em !important;
-            font-weight: bold !important;
-            border: none !important;
-            border-radius: 8px !important;
-            cursor: pointer !important;
-            margin: 10px 5px !important;
-            color: white !important;
-            background-image: none !important;
-            box-shadow: none !important;
-            text-shadow: none !important;
-        }
+        #reader__filescan_input, #reader__filescan_input + span, #reader__filescan_input + a { display: none !important; }
+        #reader button { padding: 15px 30px !important; font-size: 1.2em !important; font-weight: bold !important; border: none !important; border-radius: 8px !important; cursor: pointer !important; margin: 10px 5px !important; color: white !important; background-image: none !important; box-shadow: none !important; text-shadow: none !important; }
         #reader button[title="Stop scanning"] { background-color: #ff4757 !important; }
         #reader button[title="Start scanning"] { background-color: #2ed573 !important; }
-
-        /* กล่องตะกร้า */
-        #cart { 
-            margin: 10px auto; width: 90%; max-width: 500px; 
-            border: 2px solid #3498db; padding: 10px; border-radius: 10px; background: white;
-        }
-        #itemList { 
-            height: 250px; overflow-y: auto; text-align: left;
-            list-style-type: none; padding: 5px; background: #f9f9f9;
-            border: 1px solid #ddd; margin-bottom: 10px;
-        }
-        #itemList li { 
-            padding: 5px; border-bottom: 1px solid #eee; 
-            font-family: monospace; font-size: 1.1em; 
-            display: flex; align-items: center; 
-        }
+        #cart { margin: 10px auto; width: 90%; max-width: 500px; border: 2px solid #3498db; padding: 10px; border-radius: 10px; background: white; }
+        #itemList { height: 200px; overflow-y: auto; text-align: left; list-style-type: none; padding: 5px; background: #f9f9f9; border: 1px solid #ddd; margin-bottom: 10px; }
+        #itemList li { padding: 5px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 1.1em; display: flex; align-items: center; }
         #itemList img { width: 60px; height: 45px; margin-right: 10px; border: 1px solid #ccc; }
-        .btn-finish { 
-            width: 100%; padding: 15px; font-size: 1.3em; background-color: #27ae60; 
-            color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
-        }
+        .btn-finish { width: 100%; padding: 15px; font-size: 1.3em; background-color: #27ae60; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
+        .btn-export { width: 100%; padding: 10px; background-color: #9b59b6; color: white; border: none; border-radius: 8px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -62,6 +29,7 @@
         <h3>ตะกร้าสินค้า</h3>
         <ul id="itemList"></ul>
         <button class="btn-finish" onclick="finishSale()">จบการขาย</button>
+        <button class="btn-export" onclick="exportLocalData()">ดึงข้อมูล PRODUCT_Phone.TXT</button>
     </div>
 
     <script>
@@ -76,14 +44,13 @@
         function takeSnapshot() {
             const video = document.getElementsByTagName('video')[0];
             const canvas = document.getElementById('snapshotCanvas');
-            // ตรวจสอบวิดีโอก่อนถ่ายรูป
             if (video && video.videoWidth > 0) {
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
                 canvas.getContext('2d').drawImage(video, 0, 0);
                 return canvas.toDataURL('image/jpeg');
             }
-            return ""; // คืนค่าว่างถ้าถ่ายไม่ได้
+            return "";
         }
 
         function onScanSuccess(decodedText, decodedResult) {
@@ -104,18 +71,51 @@
         function finishSale() {
             if (scannedItems.length === 0) return alert("ยังไม่มีสินค้าครับศิษย์พี่!");
             
+            // แสดงสถานะว่ากำลังส่ง
+            alert("กำลังส่งข้อมูลให้เครื่องแม่... โปรดรอสักครู่");
+
             fetch('http://192.168.1.192:5000/save-data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ items: scannedItems })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    throw new Error('Server ไม่ตอบรับ');
+                }
+            })
             .then(data => {
-                alert("ส่งข้อมูลเข้าคอมร้านเรียบร้อยครับศิษย์พี่!");
+                alert("ส่งข้อมูลเข้าคอมร้านเรียบร้อยครับ!");
+                // ล้างตะกร้าเฉพาะเมื่อ Server ตอบกลับมาว่าสำเร็จ
                 scannedItems = [];
                 document.getElementById("itemList").innerHTML = "";
             })
-            .catch(error => { alert("เชื่อมต่อคอมร้านไม่ได้ครับ ตรวจสอบ IP ให้ดีนะครับ!"); });
+            .catch(error => {
+                // ถ้า Server ไม่ตอบ (ออฟไลน์)
+                let localData = JSON.parse(localStorage.getItem('pendingSales') || '[]');
+                localData.push(...scannedItems);
+                localStorage.setItem('pendingSales', JSON.stringify(localData));
+                
+                alert("ออฟไลน์: บันทึกข้อมูลลงมือถือไว้แล้วครับ (ไป Export ทีหลังได้)");
+                // ล้างตะกร้าเพราะเราย้ายข้อมูลไปไว้ใน LocalStorage เรียบร้อยแล้ว
+                scannedItems = [];
+                document.getElementById("itemList").innerHTML = "";
+            });
+        }
+
+        function exportLocalData() {
+            let localData = localStorage.getItem('pendingSales');
+            if (!localData) return alert("ไม่มีข้อมูลค้างในมือถือครับ");
+            
+            let blob = new Blob([localData], { type: 'text/plain' });
+            let a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'PRODUCT_Phone.TXT';
+            a.click();
+            // ล้างข้อมูลหลัง Export (เลือกเปิดใช้งานได้ตามความเหมาะสม)
+            // localStorage.removeItem('pendingSales');
         }
 
         window.onload = () => {
