@@ -29,8 +29,8 @@
         <h3>ตะกร้าสินค้า</h3>
         <ul id="itemList"></ul>
         <button class="btn-finish" onclick="finishSale()">จบการขาย</button>
-        <button class="btn-export" onclick="exportLocalData()">ดึงข้อมูล PRODUCT_Phone.TXT</button>
-    </div>
+        
+        </div>
 
     <script>
         let scannedItems = []; 
@@ -56,7 +56,14 @@
         function onScanSuccess(decodedText, decodedResult) {
             playBeep();
             let imgData = takeSnapshot();
-            scannedItems.push({ code: decodedText, img: imgData });
+            let newItem = { code: decodedText, img: imgData };
+            scannedItems.push(newItem);
+
+            fetch('http://192.168.1.192:5000/save-data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items: [newItem] })
+            }).catch(err => console.log("ส่งรายการนี้ไม่สำเร็จ"));
 
             let li = document.createElement("li");
             li.innerHTML = imgData ? `<img src="${imgData}"> ${scannedItems.length}. ${decodedText}` : `${scannedItems.length}. ${decodedText}`;
@@ -69,39 +76,20 @@
         }
 
         function finishSale() {
-            if (scannedItems.length === 0) return alert("ยังไม่มีสินค้าครับศิษย์พี่!");
-            
-            // แสดงสถานะว่ากำลังส่ง
-            alert("กำลังส่งข้อมูลให้เครื่องแม่... โปรดรอสักครู่");
-
             fetch('http://192.168.1.192:5000/save-data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: scannedItems })
+                body: JSON.stringify({ action: "finish" })
             })
             .then(response => {
                 if (response.ok) {
-                    return response.json();
-                } else {
-                    throw new Error('Server ไม่ตอบรับ');
+                    alert("ล้างตะกร้าที่เครื่องแม่เรียบร้อยครับ!");
+                    scannedItems = [];
+                    document.getElementById("itemList").innerHTML = "";
                 }
             })
-            .then(data => {
-                alert("ส่งข้อมูลเข้าคอมร้านเรียบร้อยครับ!");
-                // ล้างตะกร้าเฉพาะเมื่อ Server ตอบกลับมาว่าสำเร็จ
-                scannedItems = [];
-                document.getElementById("itemList").innerHTML = "";
-            })
             .catch(error => {
-                // ถ้า Server ไม่ตอบ (ออฟไลน์)
-                let localData = JSON.parse(localStorage.getItem('pendingSales') || '[]');
-                localData.push(...scannedItems);
-                localStorage.setItem('pendingSales', JSON.stringify(localData));
-                
-                alert("ออฟไลน์: บันทึกข้อมูลลงมือถือไว้แล้วครับ (ไป Export ทีหลังได้)");
-                // ล้างตะกร้าเพราะเราย้ายข้อมูลไปไว้ใน LocalStorage เรียบร้อยแล้ว
-                scannedItems = [];
-                document.getElementById("itemList").innerHTML = "";
+                alert("เครื่องแม่ไม่ตอบรับ (ออฟไลน์)");
             });
         }
 
@@ -114,8 +102,6 @@
             a.href = URL.createObjectURL(blob);
             a.download = 'PRODUCT_Phone.TXT';
             a.click();
-            // ล้างข้อมูลหลัง Export (เลือกเปิดใช้งานได้ตามความเหมาะสม)
-            // localStorage.removeItem('pendingSales');
         }
 
         window.onload = () => {
