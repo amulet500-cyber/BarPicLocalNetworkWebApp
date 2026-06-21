@@ -15,93 +15,96 @@
         #itemList li { padding: 5px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 1.1em; display: flex; align-items: center; }
         #itemList img { width: 60px; height: 45px; margin-right: 10px; border: 1px solid #ccc; }
         .btn-finish { width: 100%; padding: 15px; font-size: 1.3em; background-color: #27ae60; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
-        .btn-export { width: 100%; padding: 10px; background-color: #9b59b6; color: white; border: none; border-radius: 8px; cursor: pointer; }
+        /* Label แจ้งเตือนสถานะ */
+        #statusMessage { color: #e67e22; font-weight: bold; margin: 10px 0; min-height: 25px; font-size: 1.1em; }
     </style>
 </head>
 <body>
 
     <h1>ระบบสแกนสินค้า ศิษย์พี่</h1>
     <div id="reader"></div>
-    <video id="cameraStream" style="display:none;"></video>
-    <canvas id="snapshotCanvas" style="display:none;"></canvas>
-
     <div id="cart">
         <h3>ตะกร้าสินค้า</h3>
         <ul id="itemList"></ul>
-        <button class="btn-finish" onclick="finishSale()">จบการขาย</button>
         
-        </div>
+        <div id="statusMessage"></div>
+        
+        <button class="btn-finish" onclick="finishSale()">จบการขาย</button>
+    </div>
 
     <script>
         let scannedItems = []; 
         let html5QrcodeScanner;
+
+        function showStatus(msg) {
+            const statusDiv = document.getElementById("statusMessage");
+            statusDiv.innerText = msg;
+            setTimeout(() => { statusDiv.innerText = ""; }, 4000);
+        }
 
         function playBeep() {
             const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
             audio.play();
         }
 
-        function takeSnapshot() {
-            const video = document.getElementsByTagName('video')[0];
-            const canvas = document.getElementById('snapshotCanvas');
-            if (video && video.videoWidth > 0) {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                canvas.getContext('2d').drawImage(video, 0, 0);
-                return canvas.toDataURL('image/jpeg');
-            }
-            return "";
-        }
-
         function onScanSuccess(decodedText, decodedResult) {
             playBeep();
-            let imgData = takeSnapshot();
-            let newItem = { code: decodedText, img: imgData };
+            let newItem = { code: decodedText, time: new Date().toLocaleTimeString() };
             scannedItems.push(newItem);
 
             fetch('http://192.168.1.192:5000/save-data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ items: [newItem] })
-            }).catch(err => console.log("ส่งรายการนี้ไม่สำเร็จ"));
+            }).catch(() => showStatus("⚠️ ออฟไลน์: บันทึกรายการลงตะกร้ามือถือ"));
 
             let li = document.createElement("li");
-            li.innerHTML = imgData ? `<img src="${imgData}"> ${scannedItems.length}. ${decodedText}` : `${scannedItems.length}. ${decodedText}`;
-            let list = document.getElementById("itemList");
-            list.appendChild(li);
-            list.scrollTop = list.scrollHeight; 
-
+            li.innerText = `${scannedItems.length}. ${decodedText}`;
+            document.getElementById("itemList").appendChild(li);
+            
             html5QrcodeScanner.pause();
-            setTimeout(() => { html5QrcodeScanner.resume(); }, 1500); 
+            setTimeout(() => { html5QrcodeScanner.resume(); }, 1000); 
         }
 
         function finishSale() {
+            if (scannedItems.length === 0) return showStatus("ยังไม่มีสินค้าครับ!");
+            
             fetch('http://192.168.1.192:5000/save-data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: "finish" })
             })
-            .then(response => {
-                if (response.ok) {
-                    alert("ล้างตะกร้าที่เครื่องแม่เรียบร้อยครับ!");
+            .then(res => {
+                if (res.ok) {
+                    showStatus("✅ จบการขายสำเร็จ!");
                     scannedItems = [];
                     document.getElementById("itemList").innerHTML = "";
                 }
             })
-            .catch(error => {
-                alert("เครื่องแม่ไม่ตอบรับ (ออฟไลน์)");
+            .catch(() => {
+                let localData = JSON.parse(localStorage.getItem('pendingSales') || '[]');
+                localData.push(...scannedItems);
+                localStorage.setItem('pendingSales', JSON.stringify(localData));
+                showStatus("⚠️ Server ไม่ตอบรับ: เก็บข้อมูลไว้ในมือถือแล้ว");
+                scannedItems = [];
+                document.getElementById("itemList").innerHTML = "";
             });
         }
 
-        function exportLocalData() {
-            let localData = localStorage.getItem('pendingSales');
-            if (!localData) return alert("ไม่มีข้อมูลค้างในมือถือครับ");
-            
-            let blob = new Blob([localData], { type: 'text/plain' });
-            let a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'PRODUCT_Phone.TXT';
-            a.click();
+        function autoSync() {
+            let pending = localStorage.getItem('pendingSales');
+            if (pending) {
+                fetch('http://192.168.1.192:5000/save-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: pending
+                }).then(res => {
+                    if (res.ok) {
+                        localStorage.removeItem('pendingSales');
+                        showStatus("🔄 ซิงค์ข้อมูลค้างส่งเข้าเครื่องแม่แล้ว!");
+                    }
+                });
+            }
         }
 
         window.onload = () => {
@@ -109,6 +112,7 @@
                 fps: 15, qrbox: { width: 250, height: 100 }, facingMode: "environment" 
             });
             html5QrcodeScanner.render(onScanSuccess);
+            autoSync(); // เช็คซิงค์อัตโนมัติเมื่อเปิดแอป
         };
     </script>
 </body>
