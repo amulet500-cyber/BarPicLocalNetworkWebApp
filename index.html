@@ -34,6 +34,8 @@
     </div>
 
     <script>
+        // กำหนด Server IP ที่ศิษย์พี่ Fix ไว้ที่เครื่องคอมพิวเตอร์ครับ
+        const SERVER_IP = '192.168.1.200';
         let scannedItems = []; 
         let html5QrcodeScanner;
 
@@ -68,7 +70,7 @@
             let prices = JSON.parse(localStorage.getItem('productPrices') || '{}');
             prices[code] = price;
             localStorage.setItem('productPrices', JSON.stringify(prices));
-            calculateTotal(); // คำนวณใหม่เมื่อมีการเปลี่ยนราคา
+            calculateTotal();
         }
 
         function getSavedPrice(code) {
@@ -97,9 +99,9 @@
             
             document.getElementById("itemList").appendChild(li);
             li.scrollIntoView({ behavior: 'smooth', block: 'end' });
-            calculateTotal(); // คำนวณใหม่เมื่อเพิ่มสินค้า
+            calculateTotal();
 
-            fetch('http://192.168.1.192:5000/save-data', {
+            fetch(`http://${SERVER_IP}:5000/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ items: [newItem] })
@@ -112,7 +114,7 @@
         function finishSale() {
             if (scannedItems.length === 0) return showStatus("ยังไม่มีสินค้าครับ!");
             
-            fetch('http://192.168.1.192:5000/save-data', {
+            fetch(`http://${SERVER_IP}:5000/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action: "finish" })
