@@ -1,241 +1,53 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>สแกนสินค้า ศิษย์พี่ Zen - ระบบเต็ม</title>
+    <title>สแกนสินค้า ศิษย์พี่ Zen </title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        body { margin: 0; padding: 0; background: #000; height: 100vh; overflow: hidden; font-family: sans-serif; }
-        
-        #headerBar { 
-            position: fixed; top: 0; left: 0; width: 100%; z-index: 500;
-            display: flex; justify-content: space-between; align-items: center; 
-            background: rgba(34, 34, 34, 0.8); padding: 5px 10px; color: white; height: 35px; box-sizing: border-box;
-        }
-        #clock { font-size: 0.8em; }
-        .syncBtn { font-size: 0.7em; padding: 2px 8px; cursor: pointer; }
-
-        #reader__dashboard_section { position: fixed; top: 35px; left: 0; width: 100%; z-index: 200; background: #333; padding: 2px 0; }
-        #reader { position: fixed; top: 65px; left: 0; width: 100%; height: 35vh; z-index: 1; }
-        
-        #reader__filescan_input, #reader__filescan_input + span, #reader__filescan_input + a { display: none !important; }
-        #reader button { padding: 4px 10px !important; font-size: 0.8em !important; border: none !important; border-radius: 4px !important; color: white !important; }
-        
-        #cart { position: fixed; top: 48vh; bottom: 0; left: 0; width: 100%; background: rgba(255, 255, 255, 0.15); border-radius: 15px 15px 0 0; padding: 10px; z-index: 300; box-sizing: border-box; display: flex; flex-direction: column; }
-        
-        .cart-header, .item-row {
-            display: grid;
-            grid-template-columns: 30px 2.5fr 35px 35px 35px 25px 25px; 
-            gap: 3px; align-items: center; padding: 4px 0; border-bottom: 1px solid #777; font-size: 0.6em; color: white;
-        }
-        .cart-header { border-bottom: 1px solid #aaa; margin-bottom: 5px; font-weight: bold; text-align: center; }
-
-        #itemList { flex-grow: 1; overflow-y: auto; list-style-type: none; padding: 0; margin: 0 0 5px 0; }
-        .item-row img { width: 28px; height: 28px; object-fit: cover; border: 1px solid #ccc; }
-        
-        .barcode-text { font-size: 0.85em; white-space: nowrap; overflow: hidden; }
-        .item-input { width: 100%; padding: 2px; text-align: center; background: rgba(0,0,0,0.3); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 3px; color: white; box-sizing: border-box; font-size: 1em; }
-        
-        /* สไตล์ต้นทุน */
-        .cost-input { transition: all 0.3s ease; }
-        .hidden-cost { color: rgba(255, 255, 255, 0.01) !important; background: rgba(0, 0, 0, 0.05) !important; }
-        .visible-cost { color: #fff !important; background: rgba(0, 0, 0, 0.5) !important; border: 1px solid #f1c40f !important; }
-        
-        /* สถานะการกรอกทุน */
-        .cost-filled { border: 1px solid rgba(46, 204, 113, 0.8) !important; } /* เขียวจาง */
-        .cost-empty { border: 1px solid rgba(231, 76, 60, 0.8) !important; }  /* แดงจาง */
-
-        .btn-delete { background: #e74c3c; color: white; border: none; border-radius: 3px; padding: 2px; font-weight: bold; cursor: pointer; }
-        .btn-finish { width: 70%; padding: 10px; font-size: 1.1em; background-color: #27ae60; color: white; border: none; border-radius: 8px; font-weight: bold; }
-        .btn-cancel { width: 28%; padding: 10px; font-size: 1em; background-color: #c0392b; color: white; border: none; border-radius: 8px; font-weight: bold; }
-        #statusMessage { color: #f1c40f; font-weight: bold; text-align: center; height: 18px; margin-bottom: 5px; font-size: 0.8em; }
+        body{margin:0;padding:0;background:#000;height:100vh;overflow:hidden;font-family:sans-serif}
+        #headerBar{position:fixed;top:0;left:0;width:100%;z-index:500;display:flex;justify-content:space-between;align-items:center;background:rgba(34,34,34,0.8);padding:5px 10px;color:#fff;height:35px;box-sizing:border-box}
+        #clock{font-size:0.8em}.syncBtn{font-size:0.7em;padding:2px 8px;cursor:pointer}
+        #reader__dashboard_section{position:fixed;top:35px;left:0;width:100%;z-index:200;transform:scale(0.5);transform-origin:top center;background:rgba(0,0,0,0.3)!important;border-radius:10px;padding:5px!important}
+        #reader{position:fixed;top:65px;left:0;width:100%;height:35vh;z-index:1}
+        #reader__filescan_input,#reader__filescan_input+span,#reader__filescan_input+a{display:none!important}
+        #reader button{padding:4px 10px!important;font-size:1.2em!important;border:1px solid #f1c40f!important;border-radius:4px!important;color:#f1c40f!important;background:rgba(50,50,50,0.5)!important}
+        #reader__dashboard_section span,#reader__dashboard_section select{color:#f1c40f!important}
+        #reader__dashboard_section select{background:rgba(0,0,0,0.5)!important;border:1px solid #f1c40f!important}
+        #cart{position:fixed;top:48vh;bottom:0;left:0;width:100%;background:rgba(255,255,255,0.15);border-radius:15px 15px 0 0;padding:10px;z-index:300;box-sizing:border-box;display:flex;flex-direction:column}
+        .cart-header,.item-row{display:grid;grid-template-columns:30px 2.5fr 35px 35px 35px 25px 25px;gap:3px;align-items:center;padding:4px 0;border-bottom:1px solid #777;font-size:0.6em;color:#fff}
+        .cart-header{border-bottom:1px solid #aaa;margin-bottom:5px;font-weight:700;text-align:center}
+        #itemList{flex-grow:1;overflow-y:auto;list-style-type:none;padding:0;margin:0 0 5px 0}
+        .item-row img{width:28px;height:28px;object-fit:cover;border:1px solid #ccc}
+        .barcode-text{font-size:0.85em;white-space:nowrap;overflow:hidden}
+        .item-input{width:100%;padding:2px;text-align:center;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.3);border-radius:3px;color:#fff;box-sizing:border-box;font-size:1em}
+        .cost-input{transition:all .3s ease}.hidden-cost{color:rgba(255,255,255,0.01)!important;background:rgba(0,0,0,0.05)!important}
+        .visible-cost{color:#fff!important;background:rgba(0,0,0,0.5)!important;border:1px solid #f1c40f!important}
+        .cost-filled{border:1px solid rgba(46,204,113,0.8)!important}.cost-empty{border:1px solid rgba(231,76,60,0.8)!important}
+        .btn-delete{background:#e74c3c;color:#fff;border:none;border-radius:3px;padding:2px;font-weight:700;cursor:pointer}
+        .btn-finish{width:70%;padding:10px;font-size:1.1em;background-color:#27ae60;color:#fff;border:none;border-radius:8px;font-weight:700}
+        .btn-cancel{width:28%;padding:10px;font-size:1em;background-color:#c0392b;color:#fff;border:none;border-radius:8px;font-weight:700}
+        #statusMessage{color:#f1c40f;font-weight:700;text-align:center;height:18px;margin-bottom:5px;font-size:0.8em}
     </style>
 </head>
 <body>
-
     <div id="headerBar">
         <button class="syncBtn" onclick="showStatus('⬆️ อัปโหลดแล้ว')">⬆️ ขึ้น</button>
         <div id="clock">--:--:--</div>
         <button class="syncBtn" onclick="showStatus('⬇️ ดาวน์โหลดแล้ว')">⬇️ ลง</button>
     </div>
-
     <div id="reader"></div>
     <video id="cameraStream" style="display:none;"></video>
     <canvas id="snapshotCanvas" style="display:none;"></canvas>
-
     <div id="cart">
-        <h3 style="margin: 0 0 5px 0; text-align: center; color: white;">ตะกร้าสินค้า</h3>
-        <div class="cart-header">
-            <span>รูป</span><span>บาร์โค้ด</span><span>ราคา</span><span>ทุน</span><span>สต็อก</span><span>ร้าน</span><span>ลบ</span>
-        </div>
+        <h3 style="margin:0 0 5px 0;text-align:center;color:#fff">ตะกร้าสินค้า</h3>
+        <div class="cart-header"><span>รูป</span><span>บาร์โค้ด</span><span>ราคา</span><span>ทุน</span><span>สต็อก</span><span>ร้าน</span><span>ลบ</span></div>
         <ul id="itemList"></ul>
         <div id="statusMessage"></div>
-        <div style="display:flex; gap: 2px;">
-            <button class="btn-cancel" onclick="cancelBasket()">ยกเลิก</button>
-            <button id="btnFinish" class="btn-finish" onclick="finishSale()">ชำระเงิน 0 บาท</button>
-        </div>
+        <div style="display:flex;gap:2px"><button class="btn-cancel" onclick="cancelBasket()">ยกเลิก</button><button id="btnFinish" class="btn-finish" onclick="finishSale()">ชำระเงิน 0 บาท</button></div>
     </div>
-    
     <script>
-        const SERVER_IP = '192.168.1.200';
-        let scannedItems = []; 
-        let html5QrcodeScanner;
-
-        setInterval(() => {
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
-            const timeStr = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            document.getElementById('clock').innerText = dateStr + ' ' + timeStr;
-        }, 1000);
-
-        function showStatus(msg) {
-            const statusDiv = document.getElementById("statusMessage");
-            statusDiv.innerText = msg;
-            setTimeout(() => { statusDiv.innerText = ""; }, 3000);
-        }
-
-        function updateCostStatus(el) {
-            const val = parseFloat(el.value) || 0;
-            if (val > 0) { el.classList.add('cost-filled'); el.classList.remove('cost-empty'); }
-            else { el.classList.add('cost-empty'); el.classList.remove('cost-filled'); }
-        }
-
-        function toggleCostVisibility(el) {
-            el.classList.toggle('hidden-cost');
-            el.classList.toggle('visible-cost');
-        }
-
-        function removeItem(index) {
-            scannedItems.splice(index, 1);
-            refreshList();
-            calculateTotal();
-        }
-
-        function refreshList() {
-            const itemList = document.getElementById("itemList");
-            itemList.innerHTML = "";
-            scannedItems.forEach((item, index) => renderItem(item, index));
-        }
-
-        function cancelBasket() {
-            if(confirm("ยกเลิกทั้งตะกร้าใช่ไหมครับ?")) {
-                scannedItems = [];
-                document.getElementById("itemList").innerHTML = "";
-                calculateTotal();
-            }
-        }
-
-        function calculateTotal() {
-            let total = 0;
-            const productData = JSON.parse(localStorage.getItem('productData') || '{}');
-            scannedItems.forEach(item => {
-                let p = productData[item.code] && productData[item.code].price ? productData[item.code].price.val : 0;
-                total += parseFloat(p) || 0; 
-            });
-            document.getElementById("btnFinish").innerText = "ชำระเงิน " + total + " บาท";
-        }
-
-        function takeSnapshot() {
-            const video = document.getElementsByTagName('video')[0];
-            const canvas = document.getElementById('snapshotCanvas');
-            if (video && video.videoWidth > 0) {
-                canvas.width = 100; canvas.height = 100;
-                canvas.getContext('2d').drawImage(video, 0, 0, 100, 100);
-                return canvas.toDataURL('image/jpeg', 0.5);
-            }
-            return "";
-        }
-
-        function updateCellData(code, field, value) {
-            let allData = JSON.parse(localStorage.getItem('productData') || '{}');
-            if (!allData[code]) allData[code] = { price: {val:0, ts:''}, cost: {val:0, ts:''}, stock: {val:0, ts:''}, supplier: {val:'', ts:''} };
-            allData[code][field] = { val: value, ts: new Date().toISOString() };
-            localStorage.setItem('productData', JSON.stringify(allData));
-            if(field === 'price') calculateTotal();
-        }
-
-        function getCellData(code, field, def) {
-            let allData = JSON.parse(localStorage.getItem('productData') || '{}');
-            return (allData[code] && allData[code][field]) ? allData[code][field].val : def;
-        }
-
-        function renderItem(item, index) {
-            let li = document.createElement("li");
-            li.className = "item-row";
-            
-            let pVal = (item.price == 0 || item.price == "0") ? "" : item.price;
-            let cVal = (item.cost == 0 || item.cost == "0") ? "" : item.cost;
-            let sVal = (item.stock == 0 || item.stock == "0") ? "" : item.stock;
-            let statusClass = (parseFloat(cVal) > 0) ? "cost-filled" : "cost-empty";
-
-            li.innerHTML = `
-                <img src="${item.img}"> 
-                <span class="barcode-text">${item.code}</span> 
-                <input type="number" class="item-input" value="${pVal}" onchange="updateCellData('${item.code}', 'price', this.value)">
-                <input type="number" class="item-input cost-input hidden-cost ${statusClass}" value="${cVal}" 
-                       onclick="toggleCostVisibility(this)" 
-                       onchange="updateCellData('${item.code}', 'cost', this.value); updateCostStatus(this)">
-                <input type="number" class="item-input" value="${sVal}" onchange="updateCellData('${item.code}', 'stock', this.value)">
-                <input type="text" class="item-input" maxlength="1" value="${getCellData(item.code, 'supplier', '').substring(0,1)}" onchange="updateCellData('${item.code}', 'supplier', this.value)">
-                <button class="btn-delete" onclick="removeItem(${index})">X</button>
-            `;
-            document.getElementById("itemList").appendChild(li);
-            const list = document.getElementById("itemList");
-            list.scrollTop = list.scrollHeight;
-        }
-
-        async function onScanSuccess(decodedText) {
-            new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
-            let imgData = takeSnapshot(); 
-            let newItem = { 
-                code: decodedText, img: imgData, 
-                price: getCellData(decodedText, 'price', 0), 
-                cost: getCellData(decodedText, 'cost', 0), 
-                stock: getCellData(decodedText, 'stock', 0) 
-            };
-            scannedItems.push(newItem);
-            renderItem(newItem, scannedItems.length - 1);
-            calculateTotal();
-
-            fetch(`http://${SERVER_IP}:5000/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: [newItem], timestamp: new Date().toISOString() })
-            }).catch(() => showStatus("⚠️ ออฟไลน์"));
-            
-            html5QrcodeScanner.pause();
-            setTimeout(() => { html5QrcodeScanner.resume(); }, 1500); 
-        }
-
-        function finishSale() {
-            if (scannedItems.length === 0) return showStatus("ยังไม่มีสินค้าครับ!");
-            fetch(`http://${SERVER_IP}:5000/`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: "finish", items: scannedItems })
-            }).then(() => {
-                showStatus("✅ สำเร็จ!");
-                scannedItems = [];
-                document.getElementById("itemList").innerHTML = "";
-                calculateTotal();
-            }).catch(() => {
-                let localData = JSON.parse(localStorage.getItem('pendingSales') || '[]');
-                localData.push(...scannedItems);
-                localStorage.setItem('pendingSales', JSON.stringify(localData));
-                showStatus("⚠️ บันทึกในมือถือ");
-                scannedItems = [];
-                document.getElementById("itemList").innerHTML = "";
-                calculateTotal();
-            });
-        }
-
-        window.onload = () => {
-            html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
-                fps: 10, qrbox: { width: 200, height: 60 }, facingMode: "environment",
-                formatsToSupport: [ Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.QR_CODE ]
-            });
-            html5QrcodeScanner.render(onScanSuccess);
-        };
+        const SERVER_IP='192.168.1.200';let scannedItems=[],html5QrcodeScanner;setInterval(()=>{const n=new Date();document.getElementById('clock').innerText=n.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'})+' '+n.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'})},1000);function showStatus(m){const s=document.getElementById("statusMessage");s.innerText=m;setTimeout(()=>{s.innerText=""},3000)}function updateCostStatus(e){const v=parseFloat(e.value)||0;v>0?e.classList.add('cost-filled'):e.classList.add('cost-empty');v>0?e.classList.remove('cost-empty'):e.classList.remove('cost-filled')}function toggleCostVisibility(e){e.classList.toggle('hidden-cost');e.classList.toggle('visible-cost')}function removeItem(i){scannedItems.splice(i,1);refreshList();calculateTotal()}function refreshList(){const i=document.getElementById("itemList");i.innerHTML="";scannedItems.forEach((x,j)=>renderItem(x,j))}function cancelBasket(){if(confirm("ยกเลิกทั้งตะกร้าใช่ไหมครับ?")){scannedItems=[];document.getElementById("itemList").innerHTML="";calculateTotal()}}function calculateTotal(){let t=0,d=JSON.parse(localStorage.getItem('productData')||'{}');scannedItems.forEach(i=>{let p=d[i.code]&&d[i.code].price?d[i.code].price.val:0;t+=parseFloat(p)||0});document.getElementById("btnFinish").innerText="ชำระเงิน "+t+" บาท"}function takeSnapshot(){const v=document.getElementsByTagName('video')[0],c=document.getElementById('snapshotCanvas');if(v&&v.videoWidth>0){c.width=100;c.height=100;c.getContext('2d').drawImage(v,0,0,100,100);return c.toDataURL('image/jpeg',0.5)}return""}function updateCellData(c,f,v){let a=JSON.parse(localStorage.getItem('productData')||'{}');if(!a[c])a[c]={price:{val:0,ts:''},cost:{val:0,ts:''},stock:{val:0,ts:''},supplier:{val:'',ts:''}};a[c][f]={val:v,ts:new Date().toISOString()};localStorage.setItem('productData',JSON.stringify(a));if(f==='price')calculateTotal()}function getCellData(c,f,d){let a=JSON.parse(localStorage.getItem('productData')||'{}');return(a[c]&&a[c][f])?a[c][f].val:d}function renderItem(i,x){let l=document.createElement("li");l.className="item-row";let p=(i.price==0||i.price=="0")?"":i.price,c=(i.cost==0||i.cost=="0")?"":i.cost,s=(i.stock==0||i.stock=="0")?"":i.stock,st=(parseFloat(c)>0)?"cost-filled":"cost-empty";l.innerHTML=`<img src="${i.img}"><span class="barcode-text">${i.code}</span><input type="number" class="item-input" value="${p}" onchange="updateCellData('${i.code}','price',this.value)"><input type="number" class="item-input cost-input hidden-cost ${st}" value="${c}" onclick="toggleCostVisibility(this)" onchange="updateCellData('${i.code}','cost',this.value);updateCostStatus(this)"><input type="number" class="item-input" value="${s}" onchange="updateCellData('${i.code}','stock',this.value)"><input type="text" class="item-input" maxlength="1" value="${getCellData(i.code,'supplier','').substring(0,1)}" onchange="updateCellData('${i.code}','supplier',this.value)"><button class="btn-delete" onclick="removeItem(${x})">X</button>`;document.getElementById("itemList").appendChild(l);document.getElementById("itemList").scrollTop=document.getElementById("itemList").scrollHeight}async function onScanSuccess(d){new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();let i=takeSnapshot(),n={code:d,img:i,price:getCellData(d,'price',0),cost:getCellData(d,'cost',0),stock:getCellData(d,'stock',0)};scannedItems.push(n);renderItem(n,scannedItems.length-1);calculateTotal();fetch(`http://${SERVER_IP}:5000/`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:[n],timestamp:new Date().toISOString()})}).catch(()=>showStatus("⚠️ ออฟไลน์"));html5QrcodeScanner.pause();setTimeout(()=>{html5QrcodeScanner.resume()},1500)}function finishSale(){if(scannedItems.length===0)return showStatus("ยังไม่มีสินค้าครับ!");fetch(`http://${SERVER_IP}:5000/`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:"finish",items:scannedItems})}).then(()=>{showStatus("✅ สำเร็จ!");scannedItems=[];document.getElementById("itemList").innerHTML="";calculateTotal()}).catch(()=>{let l=JSON.parse(localStorage.getItem('pendingSales')||'[]');l.push(...scannedItems);localStorage.setItem('pendingSales',JSON.stringify(l));showStatus("⚠️ บันทึกในมือถือ");scannedItems=[];document.getElementById("itemList").innerHTML="";calculateTotal()})}window.onload=()=>{html5QrcodeScanner=new Html5QrcodeScanner("reader",{fps:10,qrbox:{width:200,height:60},facingMode:"environment",formatsToSupport:[Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.QR_CODE]});html5QrcodeScanner.render(onScanSuccess)};
     </script>
 </body>
 </html>
