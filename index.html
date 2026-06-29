@@ -23,23 +23,29 @@
         
         #cart { position: fixed; top: 48vh; bottom: 0; left: 0; width: 100%; background: rgba(255, 255, 255, 0.15); border-radius: 15px 15px 0 0; padding: 10px; z-index: 300; box-sizing: border-box; display: flex; flex-direction: column; }
         
-        .cart-header {
+        .cart-header, .item-row {
             display: grid;
-            grid-template-columns: 35px 1fr 40px 40px 40px 30px;
-            gap: 5px; color: #fff; font-size: 0.7em; padding: 5px; border-bottom: 1px solid #aaa; margin-bottom: 5px; font-weight: bold; text-align: center;
+            grid-template-columns: 30px 2.5fr 35px 35px 35px 25px 25px; 
+            gap: 3px; align-items: center; padding: 4px 0; border-bottom: 1px solid #777; font-size: 0.6em; color: white;
         }
+        .cart-header { border-bottom: 1px solid #aaa; margin-bottom: 5px; font-weight: bold; text-align: center; }
 
         #itemList { flex-grow: 1; overflow-y: auto; list-style-type: none; padding: 0; margin: 0 0 5px 0; }
+        .item-row img { width: 28px; height: 28px; object-fit: cover; border: 1px solid #ccc; }
         
-        .item-row {
-            display: grid;
-            grid-template-columns: 35px 1fr 40px 40px 40px 30px;
-            gap: 5px; align-items: center; padding: 5px 0; border-bottom: 1px solid #777; font-size: 0.7em; color: white;
-        }
-        .item-row img { width: 30px; height: 30px; object-fit: cover; border: 1px solid #ccc; }
+        .barcode-text { font-size: 0.85em; white-space: nowrap; overflow: hidden; }
+        .item-input { width: 100%; padding: 2px; text-align: center; background: rgba(0,0,0,0.3); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 3px; color: white; box-sizing: border-box; font-size: 1em; }
         
-        .item-input { width: 100%; padding: 3px; text-align: center; background: rgba(0,0,0,0.3); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 4px; color: white; box-sizing: border-box; font-size: 1em; }
+        /* สไตล์ต้นทุน */
+        .cost-input { transition: all 0.3s ease; }
+        .hidden-cost { color: rgba(255, 255, 255, 0.01) !important; background: rgba(0, 0, 0, 0.05) !important; }
+        .visible-cost { color: #fff !important; background: rgba(0, 0, 0, 0.5) !important; border: 1px solid #f1c40f !important; }
+        
+        /* สถานะการกรอกทุน */
+        .cost-filled { border: 1px solid rgba(46, 204, 113, 0.8) !important; } /* เขียวจาง */
+        .cost-empty { border: 1px solid rgba(231, 76, 60, 0.8) !important; }  /* แดงจาง */
 
+        .btn-delete { background: #e74c3c; color: white; border: none; border-radius: 3px; padding: 2px; font-weight: bold; cursor: pointer; }
         .btn-finish { width: 70%; padding: 10px; font-size: 1.1em; background-color: #27ae60; color: white; border: none; border-radius: 8px; font-weight: bold; }
         .btn-cancel { width: 28%; padding: 10px; font-size: 1em; background-color: #c0392b; color: white; border: none; border-radius: 8px; font-weight: bold; }
         #statusMessage { color: #f1c40f; font-weight: bold; text-align: center; height: 18px; margin-bottom: 5px; font-size: 0.8em; }
@@ -60,7 +66,7 @@
     <div id="cart">
         <h3 style="margin: 0 0 5px 0; text-align: center; color: white;">ตะกร้าสินค้า</h3>
         <div class="cart-header">
-            <span>รูป</span><span>บาร์โค้ด</span><span>ราคา</span><span>ทุน</span><span>สต็อก</span><span>ร้าน</span>
+            <span>รูป</span><span>บาร์โค้ด</span><span>ราคา</span><span>ทุน</span><span>สต็อก</span><span>ร้าน</span><span>ลบ</span>
         </div>
         <ul id="itemList"></ul>
         <div id="statusMessage"></div>
@@ -88,6 +94,29 @@
             setTimeout(() => { statusDiv.innerText = ""; }, 3000);
         }
 
+        function updateCostStatus(el) {
+            const val = parseFloat(el.value) || 0;
+            if (val > 0) { el.classList.add('cost-filled'); el.classList.remove('cost-empty'); }
+            else { el.classList.add('cost-empty'); el.classList.remove('cost-filled'); }
+        }
+
+        function toggleCostVisibility(el) {
+            el.classList.toggle('hidden-cost');
+            el.classList.toggle('visible-cost');
+        }
+
+        function removeItem(index) {
+            scannedItems.splice(index, 1);
+            refreshList();
+            calculateTotal();
+        }
+
+        function refreshList() {
+            const itemList = document.getElementById("itemList");
+            itemList.innerHTML = "";
+            scannedItems.forEach((item, index) => renderItem(item, index));
+        }
+
         function cancelBasket() {
             if(confirm("ยกเลิกทั้งตะกร้าใช่ไหมครับ?")) {
                 scannedItems = [];
@@ -101,7 +130,7 @@
             const productData = JSON.parse(localStorage.getItem('productData') || '{}');
             scannedItems.forEach(item => {
                 let p = productData[item.code] && productData[item.code].price ? productData[item.code].price.val : 0;
-                total += parseFloat(p); 
+                total += parseFloat(p) || 0; 
             });
             document.getElementById("btnFinish").innerText = "ชำระเงิน " + total + " บาท";
         }
@@ -133,28 +162,37 @@
         function renderItem(item, index) {
             let li = document.createElement("li");
             li.className = "item-row";
+            
+            let pVal = (item.price == 0 || item.price == "0") ? "" : item.price;
+            let cVal = (item.cost == 0 || item.cost == "0") ? "" : item.cost;
+            let sVal = (item.stock == 0 || item.stock == "0") ? "" : item.stock;
+            let statusClass = (parseFloat(cVal) > 0) ? "cost-filled" : "cost-empty";
+
             li.innerHTML = `
                 <img src="${item.img}"> 
-                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.code}</span> 
-                <input type="number" class="item-input" value="${item.price}" onchange="updateCellData('${item.code}', 'price', this.value)">
-                <input type="number" class="item-input" value="${item.cost}" onchange="updateCellData('${item.code}', 'cost', this.value)">
-                <input type="number" class="item-input" value="${item.stock}" onchange="updateCellData('${item.code}', 'stock', this.value)">
+                <span class="barcode-text">${item.code}</span> 
+                <input type="number" class="item-input" value="${pVal}" onchange="updateCellData('${item.code}', 'price', this.value)">
+                <input type="number" class="item-input cost-input hidden-cost ${statusClass}" value="${cVal}" 
+                       onclick="toggleCostVisibility(this)" 
+                       onchange="updateCellData('${item.code}', 'cost', this.value); updateCostStatus(this)">
+                <input type="number" class="item-input" value="${sVal}" onchange="updateCellData('${item.code}', 'stock', this.value)">
                 <input type="text" class="item-input" maxlength="1" value="${getCellData(item.code, 'supplier', '').substring(0,1)}" onchange="updateCellData('${item.code}', 'supplier', this.value)">
+                <button class="btn-delete" onclick="removeItem(${index})">X</button>
             `;
             document.getElementById("itemList").appendChild(li);
-            // เพิ่มคำสั่งเลื่อนลงอัตโนมัติ
             const list = document.getElementById("itemList");
             list.scrollTop = list.scrollHeight;
         }
 
         async function onScanSuccess(decodedText) {
             new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
-            let currentStock = parseInt(getCellData(decodedText, 'stock', 0));
-            let newStock = currentStock > 0 ? currentStock - 1 : 0;
-            updateCellData(decodedText, 'stock', newStock);
-
             let imgData = takeSnapshot(); 
-            let newItem = { code: decodedText, img: imgData, price: getCellData(decodedText, 'price', 0), cost: getCellData(decodedText, 'cost', 0), stock: newStock };
+            let newItem = { 
+                code: decodedText, img: imgData, 
+                price: getCellData(decodedText, 'price', 0), 
+                cost: getCellData(decodedText, 'cost', 0), 
+                stock: getCellData(decodedText, 'stock', 0) 
+            };
             scannedItems.push(newItem);
             renderItem(newItem, scannedItems.length - 1);
             calculateTotal();
