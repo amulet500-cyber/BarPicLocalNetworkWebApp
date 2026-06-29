@@ -1,49 +1,63 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>สแกนสินค้า ศิษย์พี่ Zen</title>
+    <title>สแกนสินค้า ศิษย์พี่ Zen - ระบบเต็ม</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body { margin: 0; padding: 0; background: #000; height: 100vh; overflow: hidden; font-family: sans-serif; }
-        #reader__dashboard_section { position: fixed; top: 0; left: 0; width: 100%; z-index: 200; background: #333; padding: 2px 0; }
         
-        /* ปรับให้กล้องเล็กลง (30vh) เพื่อเปิดพื้นที่ให้ตะกร้า */
-        #reader { position: fixed; top: 40px; left: 0; width: 100%; height: 30vh; z-index: 1; }
+        /* ปรับ Header ใหม่ให้กระชับ */
+        #headerBar { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 2px 5px; color: white; height: 35px; gap: 3px; }
+        .syncBtn { font-size: 0.6em; padding: 2px 4px; cursor: pointer; }
         
+        /* ส่วนควบคุมกล้องและปุ่ม Stop ให้อยู่บรรทัดเดียวกัน */
+        #camera-controls { display: flex; align-items: center; gap: 3px; }
+        #camera-controls select { font-size: 0.6em; width: 60px; padding: 1px; }
+        #camera-controls button { font-size: 0.6em; padding: 2px 4px; cursor: pointer; }
+
+        #reader__dashboard_section { position: fixed; top: 35px; left: 0; width: 100%; z-index: 200; background: #333; padding: 1px 0; }
+        #reader { position: fixed; top: 55px; left: 0; width: 100%; height: 30vh; z-index: 1; }
         #reader__filescan_input, #reader__filescan_input + span, #reader__filescan_input + a { display: none !important; }
-        #reader button { padding: 4px 10px !important; font-size: 0.8em !important; border: none !important; border-radius: 4px !important; color: white !important; }
+        #reader button { padding: 2px 6px !important; font-size: 0.7em !important; border: none !important; border-radius: 4px !important; color: white !important; }
         
-        /* เลื่อนตระกร้าขึ้นมาที่ 35vh แทน (เลขยิ่งน้อย ยิ่งอยู่สูง) */
-        #cart { 
-            position: fixed; top: 35vh; bottom: 0; left: 0; width: 100%; 
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 15px 15px 0 0; padding: 10px; z-index: 100;
-            box-sizing: border-box; display: flex; flex-direction: column;
-        }
-        
+        #cart { position: fixed; top: 36vh; bottom: 0; left: 0; width: 100%; background: rgba(255, 255, 255, 0.2); border-radius: 15px 15px 0 0; padding: 10px; z-index: 100; box-sizing: border-box; display: flex; flex-direction: column; }
         #itemList { flex-grow: 1; overflow-y: auto; list-style-type: none; padding: 0; margin: 0 0 5px 0; border-top: 1px solid #999; }
-        .item-row { padding: 5px; border-bottom: 1px solid #777; display: flex; align-items: center; justify-content: space-between; font-size: 0.75em; color: white; }
-        .item-row img { width: 30px; height: 30px; margin-right: 5px; border: 1px solid #ccc; object-fit: cover; }
+        .item-row { padding: 4px; border-bottom: 1px solid #777; display: flex; align-items: center; justify-content: space-between; font-size: 0.7em; color: white; }
+        .item-row img { width: 25px; height: 25px; margin-right: 5px; border: 1px solid #ccc; object-fit: cover; }
+        .input-group { display: flex; gap: 2px; }
         
-        .input-group { display: flex; gap: 3px; }
-        .item-input { width: 40px; padding: 2px; text-align: center; border: 1px solid #555; border-radius: 3px; font-size: 0.9em; }
+        .item-input { width: 30px; padding: 2px; text-align: center; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 4px; color: white; font-size: 0.8em; }
         
-        .btn-finish { width: 100%; padding: 10px; font-size: 1.1em; background-color: #27ae60; color: white; border: none; border-radius: 8px; font-weight: bold; }
-        #statusMessage { color: #f1c40f; font-weight: bold; text-align: center; height: 18px; margin-bottom: 5px; font-size: 0.8em; }
+        .btn-finish { width: 70%; padding: 8px; font-size: 1em; background-color: #27ae60; color: white; border: none; border-radius: 8px; font-weight: bold; }
+        .btn-cancel { width: 28%; padding: 8px; font-size: 0.9em; background-color: #c0392b; color: white; border: none; border-radius: 8px; font-weight: bold; }
+        #statusMessage { color: #f1c40f; font-weight: bold; text-align: center; height: 16px; margin-bottom: 3px; font-size: 0.7em; }
+        .btn-del { background: #e74c3c; color: white; border: none; padding: 1px 3px; border-radius: 3px; font-size: 0.9em; }
     </style>
 </head>
 <body>
+
+    <div id="headerBar">
+        <button class="syncBtn" onclick="showStatus('⬆️ อัปโหลด')">⬆️ ขึ้น</button>
+        <div id="camera-controls">
+            <select id="camera-select"><option>Cam</option></select>
+            <button onclick="stopCamera()">Stop</button>
+        </div>
+        <button class="syncBtn" onclick="showStatus('⬇️ ดาวน์โหลด')">⬇️ ลง</button>
+    </div>
 
     <div id="reader"></div>
     <video id="cameraStream" style="display:none;"></video>
     <canvas id="snapshotCanvas" style="display:none;"></canvas>
 
     <div id="cart">
-        <h3 style="margin: 0 0 5px 0; text-align: center; color: white;">ตะกร้าสินค้า</h3>
+        <h3 style="margin: 0 0 5px 0; text-align: center; color: white; font-size: 0.9em;">ตะกร้าสินค้า</h3>
         <ul id="itemList"></ul>
         <div id="statusMessage"></div>
-        <button id="btnFinish" class="btn-finish" onclick="finishSale()">ชำระเงิน 0 บาท</button>
+        <div style="display:flex; gap: 2px;">
+            <button class="btn-cancel" onclick="cancelBasket()">ยกเลิก</button>
+            <button id="btnFinish" class="btn-finish" onclick="finishSale()">ชำระเงิน 0 บาท</button>
+        </div>
     </div>
 
     <script>
@@ -51,16 +65,37 @@
         let scannedItems = []; 
         let html5QrcodeScanner;
 
+        function stopCamera() { if(html5QrcodeScanner) html5QrcodeScanner.stop(); }
+
         function showStatus(msg) {
             const statusDiv = document.getElementById("statusMessage");
             statusDiv.innerText = msg;
             setTimeout(() => { statusDiv.innerText = ""; }, 3000);
         }
 
+        // ... ฟังก์ชันการทำงานส่วนที่เหลือคงเดิมครับ ...
+        function cancelBasket() {
+            if(confirm("ยกเลิกทั้งตะกร้าใช่ไหมครับ?")) {
+                scannedItems = [];
+                document.getElementById("itemList").innerHTML = "";
+                calculateTotal();
+            }
+        }
+
+        function removeItem(index) {
+            scannedItems.splice(index, 1);
+            document.getElementById("itemList").innerHTML = "";
+            scannedItems.forEach((item, idx) => renderItem(item, idx));
+            calculateTotal();
+        }
+
         function calculateTotal() {
             let total = 0;
-            const prices = JSON.parse(localStorage.getItem('productPrices') || '{}');
-            scannedItems.forEach(item => { total += parseFloat(prices[item.code] || 0); });
+            const productData = JSON.parse(localStorage.getItem('productData') || '{}');
+            scannedItems.forEach(item => {
+                let p = productData[item.code] && productData[item.code].price ? productData[item.code].price.val : 0;
+                total += parseFloat(p); 
+            });
             document.getElementById("btnFinish").innerText = "ชำระเงิน " + total + " บาท";
         }
 
@@ -75,58 +110,50 @@
             return "";
         }
 
-        function updateLocalPrice(code, price) {
-            let prices = JSON.parse(localStorage.getItem('productPrices') || '{}');
-            prices[code] = price;
-            localStorage.setItem('productPrices', JSON.stringify(prices));
-            calculateTotal();
+        function updateCellData(code, field, value) {
+            let allData = JSON.parse(localStorage.getItem('productData') || '{}');
+            if (!allData[code]) allData[code] = { price: {val:0, ts:''}, cost: {val:0, ts:''}, stock: {val:0, ts:''}, supplier: {val:'', ts:''} };
+            allData[code][field] = { val: value, ts: new Date().toISOString() };
+            localStorage.setItem('productData', JSON.stringify(allData));
+            if(field === 'price') calculateTotal();
         }
 
-        function updateLocalStock(code, stock) {
-            let stocks = JSON.parse(localStorage.getItem('productStocks') || '{}');
-            stocks[code] = stock;
-            localStorage.setItem('productStocks', JSON.stringify(stocks));
+        function getCellData(code, field, def) {
+            let allData = JSON.parse(localStorage.getItem('productData') || '{}');
+            return (allData[code] && allData[code][field]) ? allData[code][field].val : def;
         }
 
-        function getSavedPrice(code) {
-            let prices = JSON.parse(localStorage.getItem('productPrices') || '{}');
-            return prices[code] || ''; 
-        }
-
-        function getSavedStock(code) {
-            let stocks = JSON.parse(localStorage.getItem('productStocks') || '{}');
-            return parseInt(stocks[code] || 0); 
-        }
-
-        async function onScanSuccess(decodedText, decodedResult) {
-            new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
-            
-            let currentStock = getSavedStock(decodedText);
-            let newStock = currentStock > 0 ? currentStock - 1 : 0;
-            updateLocalStock(decodedText, newStock);
-
-            let imgData = takeSnapshot(); 
-            let price = getSavedPrice(decodedText);
-            let newItem = { code: decodedText, img: imgData, price: price, stock: newStock, time: new Date().toLocaleTimeString() };
-            scannedItems.push(newItem);
-
+        function renderItem(item, index) {
             let li = document.createElement("li");
             li.className = "item-row";
-            li.innerHTML = `<img src="${imgData}"> 
-                            <span style="flex-grow:1; padding:0 5px; word-break: break-all;">${decodedText}</span> 
-                            <div class="input-group">
-                                <input type="number" class="item-input" value="${price}" placeholder="ราคา" onchange="updateLocalPrice('${decodedText}', this.value)">
-                                <input type="number" class="item-input" value="${newStock}" placeholder="สต็อก" onchange="updateLocalStock('${decodedText}', this.value)">
-                            </div>`;
-            
+            li.innerHTML = `<img src="${item.img}"> 
+                <span style="flex-grow:1; padding:0 5px; word-break: break-all;">${item.code}</span> 
+                <div class="input-group">
+                    <input type="number" class="item-input" value="${item.price}" onchange="updateCellData('${item.code}', 'price', this.value)">
+                    <input type="number" class="item-input" value="${item.cost}" onchange="updateCellData('${item.code}', 'cost', this.value)">
+                    <input type="number" class="item-input" value="${item.stock}" onchange="updateCellData('${item.code}', 'stock', this.value)">
+                    <input type="text" class="item-input" value="${getCellData(item.code, 'supplier', '')}" placeholder="ร้าน" onchange="updateCellData('${item.code}', 'supplier', this.value)">
+                    <button class="btn-del" onclick="removeItem(${index})">X</button>
+                </div>`;
             document.getElementById("itemList").appendChild(li);
-            li.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+
+        async function onScanSuccess(decodedText) {
+            new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
+            let currentStock = parseInt(getCellData(decodedText, 'stock', 0));
+            let newStock = currentStock > 0 ? currentStock - 1 : 0;
+            updateCellData(decodedText, 'stock', newStock);
+
+            let imgData = takeSnapshot(); 
+            let newItem = { code: decodedText, img: imgData, price: getCellData(decodedText, 'price', 0), cost: getCellData(decodedText, 'cost', 0), stock: newStock };
+            scannedItems.push(newItem);
+            renderItem(newItem, scannedItems.length - 1);
             calculateTotal();
 
             fetch(`http://${SERVER_IP}:5000/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: [newItem] })
+                body: JSON.stringify({ items: [newItem], timestamp: new Date().toISOString() })
             }).catch(() => showStatus("⚠️ ออฟไลน์"));
             
             html5QrcodeScanner.pause();
@@ -138,7 +165,7 @@
             fetch(`http://${SERVER_IP}:5000/`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: "finish" })
+                body: JSON.stringify({ action: "finish", items: scannedItems })
             }).then(() => {
                 showStatus("✅ สำเร็จ!");
                 scannedItems = [];
@@ -157,15 +184,8 @@
 
         window.onload = () => {
             html5QrcodeScanner = new Html5QrcodeScanner("reader", { 
-                fps: 10, 
-                qrbox: { width: 200, height: 60 }, 
-                facingMode: "environment",
-                formatsToSupport: [ 
-                    Html5QrcodeSupportedFormats.EAN_13,
-                    Html5QrcodeSupportedFormats.EAN_8,
-                    Html5QrcodeSupportedFormats.CODE_128,
-                    Html5QrcodeSupportedFormats.QR_CODE
-                ]
+                fps: 10, qrbox: { width: 200, height: 60 }, facingMode: "environment",
+                formatsToSupport: [ Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.QR_CODE ]
             });
             html5QrcodeScanner.render(onScanSuccess);
         };
