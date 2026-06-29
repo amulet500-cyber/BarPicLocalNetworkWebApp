@@ -7,43 +7,50 @@
     <style>
         body { margin: 0; padding: 0; background: #000; height: 100vh; overflow: hidden; font-family: sans-serif; }
         
-        /* ปรับ Header ใหม่ให้กระชับ */
-        #headerBar { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 2px 5px; color: white; height: 35px; gap: 3px; }
-        .syncBtn { font-size: 0.6em; padding: 2px 4px; cursor: pointer; }
-        
-        /* ส่วนควบคุมกล้องและปุ่ม Stop ให้อยู่บรรทัดเดียวกัน */
-        #camera-controls { display: flex; align-items: center; gap: 3px; }
-        #camera-controls select { font-size: 0.6em; width: 60px; padding: 1px; }
-        #camera-controls button { font-size: 0.6em; padding: 2px 4px; cursor: pointer; }
+        #headerBar { 
+            position: fixed; top: 0; left: 0; width: 100%; z-index: 500;
+            display: flex; justify-content: space-between; align-items: center; 
+            background: rgba(34, 34, 34, 0.8); padding: 5px 10px; color: white; height: 35px; box-sizing: border-box;
+        }
+        #clock { font-size: 0.8em; }
+        .syncBtn { font-size: 0.7em; padding: 2px 8px; cursor: pointer; }
 
-        #reader__dashboard_section { position: fixed; top: 35px; left: 0; width: 100%; z-index: 200; background: #333; padding: 1px 0; }
-        #reader { position: fixed; top: 55px; left: 0; width: 100%; height: 30vh; z-index: 1; }
+        #reader__dashboard_section { position: fixed; top: 35px; left: 0; width: 100%; z-index: 200; background: #333; padding: 2px 0; }
+        #reader { position: fixed; top: 65px; left: 0; width: 100%; height: 35vh; z-index: 1; }
+        
         #reader__filescan_input, #reader__filescan_input + span, #reader__filescan_input + a { display: none !important; }
-        #reader button { padding: 2px 6px !important; font-size: 0.7em !important; border: none !important; border-radius: 4px !important; color: white !important; }
+        #reader button { padding: 4px 10px !important; font-size: 0.8em !important; border: none !important; border-radius: 4px !important; color: white !important; }
         
-        #cart { position: fixed; top: 36vh; bottom: 0; left: 0; width: 100%; background: rgba(255, 255, 255, 0.2); border-radius: 15px 15px 0 0; padding: 10px; z-index: 100; box-sizing: border-box; display: flex; flex-direction: column; }
-        #itemList { flex-grow: 1; overflow-y: auto; list-style-type: none; padding: 0; margin: 0 0 5px 0; border-top: 1px solid #999; }
-        .item-row { padding: 4px; border-bottom: 1px solid #777; display: flex; align-items: center; justify-content: space-between; font-size: 0.7em; color: white; }
-        .item-row img { width: 25px; height: 25px; margin-right: 5px; border: 1px solid #ccc; object-fit: cover; }
-        .input-group { display: flex; gap: 2px; }
+        #cart { position: fixed; top: 48vh; bottom: 0; left: 0; width: 100%; background: rgba(255, 255, 255, 0.15); border-radius: 15px 15px 0 0; padding: 10px; z-index: 300; box-sizing: border-box; display: flex; flex-direction: column; }
         
-        .item-input { width: 30px; padding: 2px; text-align: center; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 4px; color: white; font-size: 0.8em; }
+        .cart-header {
+            display: grid;
+            grid-template-columns: 35px 1fr 40px 40px 40px 30px;
+            gap: 5px; color: #fff; font-size: 0.7em; padding: 5px; border-bottom: 1px solid #aaa; margin-bottom: 5px; font-weight: bold; text-align: center;
+        }
+
+        #itemList { flex-grow: 1; overflow-y: auto; list-style-type: none; padding: 0; margin: 0 0 5px 0; }
         
-        .btn-finish { width: 70%; padding: 8px; font-size: 1em; background-color: #27ae60; color: white; border: none; border-radius: 8px; font-weight: bold; }
-        .btn-cancel { width: 28%; padding: 8px; font-size: 0.9em; background-color: #c0392b; color: white; border: none; border-radius: 8px; font-weight: bold; }
-        #statusMessage { color: #f1c40f; font-weight: bold; text-align: center; height: 16px; margin-bottom: 3px; font-size: 0.7em; }
-        .btn-del { background: #e74c3c; color: white; border: none; padding: 1px 3px; border-radius: 3px; font-size: 0.9em; }
+        .item-row {
+            display: grid;
+            grid-template-columns: 35px 1fr 40px 40px 40px 30px;
+            gap: 5px; align-items: center; padding: 5px 0; border-bottom: 1px solid #777; font-size: 0.7em; color: white;
+        }
+        .item-row img { width: 30px; height: 30px; object-fit: cover; border: 1px solid #ccc; }
+        
+        .item-input { width: 100%; padding: 3px; text-align: center; background: rgba(0,0,0,0.3); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 4px; color: white; box-sizing: border-box; font-size: 1em; }
+
+        .btn-finish { width: 70%; padding: 10px; font-size: 1.1em; background-color: #27ae60; color: white; border: none; border-radius: 8px; font-weight: bold; }
+        .btn-cancel { width: 28%; padding: 10px; font-size: 1em; background-color: #c0392b; color: white; border: none; border-radius: 8px; font-weight: bold; }
+        #statusMessage { color: #f1c40f; font-weight: bold; text-align: center; height: 18px; margin-bottom: 5px; font-size: 0.8em; }
     </style>
 </head>
 <body>
 
     <div id="headerBar">
-        <button class="syncBtn" onclick="showStatus('⬆️ อัปโหลด')">⬆️ ขึ้น</button>
-        <div id="camera-controls">
-            <select id="camera-select"><option>Cam</option></select>
-            <button onclick="stopCamera()">Stop</button>
-        </div>
-        <button class="syncBtn" onclick="showStatus('⬇️ ดาวน์โหลด')">⬇️ ลง</button>
+        <button class="syncBtn" onclick="showStatus('⬆️ อัปโหลดแล้ว')">⬆️ ขึ้น</button>
+        <div id="clock">--:--:--</div>
+        <button class="syncBtn" onclick="showStatus('⬇️ ดาวน์โหลดแล้ว')">⬇️ ลง</button>
     </div>
 
     <div id="reader"></div>
@@ -51,7 +58,10 @@
     <canvas id="snapshotCanvas" style="display:none;"></canvas>
 
     <div id="cart">
-        <h3 style="margin: 0 0 5px 0; text-align: center; color: white; font-size: 0.9em;">ตะกร้าสินค้า</h3>
+        <h3 style="margin: 0 0 5px 0; text-align: center; color: white;">ตะกร้าสินค้า</h3>
+        <div class="cart-header">
+            <span>รูป</span><span>บาร์โค้ด</span><span>ราคา</span><span>ทุน</span><span>สต็อก</span><span>ร้าน</span>
+        </div>
         <ul id="itemList"></ul>
         <div id="statusMessage"></div>
         <div style="display:flex; gap: 2px;">
@@ -59,13 +69,18 @@
             <button id="btnFinish" class="btn-finish" onclick="finishSale()">ชำระเงิน 0 บาท</button>
         </div>
     </div>
-
+    
     <script>
         const SERVER_IP = '192.168.1.200';
         let scannedItems = []; 
         let html5QrcodeScanner;
 
-        function stopCamera() { if(html5QrcodeScanner) html5QrcodeScanner.stop(); }
+        setInterval(() => {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+            const timeStr = now.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('clock').innerText = dateStr + ' ' + timeStr;
+        }, 1000);
 
         function showStatus(msg) {
             const statusDiv = document.getElementById("statusMessage");
@@ -73,20 +88,12 @@
             setTimeout(() => { statusDiv.innerText = ""; }, 3000);
         }
 
-        // ... ฟังก์ชันการทำงานส่วนที่เหลือคงเดิมครับ ...
         function cancelBasket() {
             if(confirm("ยกเลิกทั้งตะกร้าใช่ไหมครับ?")) {
                 scannedItems = [];
                 document.getElementById("itemList").innerHTML = "";
                 calculateTotal();
             }
-        }
-
-        function removeItem(index) {
-            scannedItems.splice(index, 1);
-            document.getElementById("itemList").innerHTML = "";
-            scannedItems.forEach((item, idx) => renderItem(item, idx));
-            calculateTotal();
         }
 
         function calculateTotal() {
@@ -126,16 +133,18 @@
         function renderItem(item, index) {
             let li = document.createElement("li");
             li.className = "item-row";
-            li.innerHTML = `<img src="${item.img}"> 
-                <span style="flex-grow:1; padding:0 5px; word-break: break-all;">${item.code}</span> 
-                <div class="input-group">
-                    <input type="number" class="item-input" value="${item.price}" onchange="updateCellData('${item.code}', 'price', this.value)">
-                    <input type="number" class="item-input" value="${item.cost}" onchange="updateCellData('${item.code}', 'cost', this.value)">
-                    <input type="number" class="item-input" value="${item.stock}" onchange="updateCellData('${item.code}', 'stock', this.value)">
-                    <input type="text" class="item-input" value="${getCellData(item.code, 'supplier', '')}" placeholder="ร้าน" onchange="updateCellData('${item.code}', 'supplier', this.value)">
-                    <button class="btn-del" onclick="removeItem(${index})">X</button>
-                </div>`;
+            li.innerHTML = `
+                <img src="${item.img}"> 
+                <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${item.code}</span> 
+                <input type="number" class="item-input" value="${item.price}" onchange="updateCellData('${item.code}', 'price', this.value)">
+                <input type="number" class="item-input" value="${item.cost}" onchange="updateCellData('${item.code}', 'cost', this.value)">
+                <input type="number" class="item-input" value="${item.stock}" onchange="updateCellData('${item.code}', 'stock', this.value)">
+                <input type="text" class="item-input" maxlength="1" value="${getCellData(item.code, 'supplier', '').substring(0,1)}" onchange="updateCellData('${item.code}', 'supplier', this.value)">
+            `;
             document.getElementById("itemList").appendChild(li);
+            // เพิ่มคำสั่งเลื่อนลงอัตโนมัติ
+            const list = document.getElementById("itemList");
+            list.scrollTop = list.scrollHeight;
         }
 
         async function onScanSuccess(decodedText) {
