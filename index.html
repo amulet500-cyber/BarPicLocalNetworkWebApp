@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>สแกนสินค้า ศิษย์พี่ Zen - อัปเดตพร้อม Overlay</title>
+    <title>สแกนสินค้า ศิษย์พี่ Zen - อัปเดต</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body{margin:0;padding:0;background:#000;height:100vh;overflow:hidden;font-family:sans-serif}
         #headerBar{position:fixed;top:0;left:0;width:100%;z-index:500;display:flex;justify-content:space-between;align-items:center;background:rgba(34,34,34,0.8);padding:5px 10px;color:#fff;height:35px;box-sizing:border-box}
-        #clock{font-size:0.8em}.syncBtn{font-size:0.7em;padding:2px 8px;cursor:pointer}
+        #modeSelect{background:rgba(0,0,0,0.5);color:#f1c40f;border:1px solid #f1c40f;padding:2px;font-size:0.8em;border-radius:4px}
+        #clock{font-size:0.8em}
         #reader__dashboard_section{position:fixed;top:35px;left:0;width:100%;z-index:200;transform:scale(0.5);transform-origin:top center;background:rgba(0,0,0,0.3)!important;border-radius:10px;padding:5px!important}
         #reader{position:fixed;top:65px;left:0;width:100%;height:35vh;z-index:1}
         #sleepOverlay{position:fixed;top:65px;left:0;width:100%;height:35vh;z-index:1000;background:rgba(0,0,0,0.9);color:#f1c40f;display:none;justify-content:center;align-items:center;font-size:1.2em;font-weight:bold;cursor:pointer;text-align:center}
@@ -33,10 +34,13 @@
 </head>
 <body onclick="wakeScanner()">
     <div id="headerBar">
-        <button class="syncBtn" onclick="showStatus('⬆️ อัปโหลดแล้ว')">⬆️ ขึ้น</button>
+        <select id="modeSelect" onchange="changeMode(this.value)">
+            <option value="SELL">ขาย</option>
+            <option value="BUY">ซื้อ</option>
+            <option value="CHECK">เช็ค</option>
+        </select>
         <div id="clock">--:--:--</div>
-        <button class="syncBtn" onclick="showStatus('⬇️ ดาวน์โหลดแล้ว')">⬇️ ลง</button>
-    </div>
+        <div></div> </div>
     <div id="reader"></div>
     <div id="sleepOverlay" onclick="wakeScanner()">💤 กดที่นี่เพื่อสแกนสินค้า</div>
     <div id="cart">
@@ -47,11 +51,51 @@
         <div style="display:flex;gap:2px"><button class="btn-cancel" onclick="cancelBasket()">ยกเลิก</button><button id="btnFinish" class="btn-finish" onclick="finishSale()">ชำระเงิน 0 บาท</button></div>
     </div>
     <script>
-        const SERVER_IP='192.168.1.200';let scannedItems=[],html5QrcodeScanner,idleTimer,isScanning=true;
+        const SERVER_IP='192.168.1.200';
+        let scannedItems=[],html5QrcodeScanner,idleTimer,isScanning=true;
+
+        function changeMode(m){localStorage.setItem('zenMode',m);showStatus("โหมด: "+m);calculateTotal()}
         function resetIdleTimer(){clearTimeout(idleTimer);idleTimer=setTimeout(sleepScanner,300000)}
         function sleepScanner(){if(isScanning){html5QrcodeScanner.clear().then(()=>{isScanning=false;document.getElementById('sleepOverlay').style.display='flex';showStatus("💤 พักสแกนเนอร์")})}}
         function wakeScanner(){if(!isScanning){isScanning=true;document.getElementById('sleepOverlay').style.display='none';showStatus("📷 พร้อมสแกน");html5QrcodeScanner.render(onScanSuccess);resetIdleTimer()}}
-        setInterval(()=>{const n=new Date();document.getElementById('clock').innerText=n.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'})+' '+n.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'})},1000);function showStatus(m){const s=document.getElementById("statusMessage");s.innerText=m;setTimeout(()=>{s.innerText=""},3000)}function updateCostStatus(e){const v=parseFloat(e.value)||0;v>0?e.classList.add('cost-filled'):e.classList.add('cost-empty');v>0?e.classList.remove('cost-empty'):e.classList.remove('cost-filled')}function toggleCostVisibility(e){e.classList.toggle('hidden-cost');e.classList.toggle('visible-cost')}function removeItem(i){scannedItems.splice(i,1);refreshList();calculateTotal()}function refreshList(){const i=document.getElementById("itemList");i.innerHTML="";scannedItems.forEach((x,j)=>renderItem(x,j))}function cancelBasket(){if(confirm("ยกเลิกทั้งตะกร้าใช่ไหม?")){scannedItems=[];document.getElementById("itemList").innerHTML="";calculateTotal()}}function calculateTotal(){let t=0,d=JSON.parse(localStorage.getItem('productData')||'{}');scannedItems.forEach(i=>{let p=d[i.code]&&d[i.code].price?d[i.code].price.val:0;t+=parseFloat(p)||0});document.getElementById("btnFinish").innerText="ชำระเงิน "+t+" บาท"}function takeSnapshot(){const v=document.getElementsByTagName('video')[0],c=document.getElementById('snapshotCanvas')||document.createElement('canvas');if(v&&v.videoWidth>0){c.width=100;c.height=100;c.getContext('2d').drawImage(v,0,0,100,100);return c.toDataURL('image/jpeg',0.5)}return""}function updateCellData(c,f,v){let a=JSON.parse(localStorage.getItem('productData')||'{}');if(!a[c])a[c]={price:{val:0,ts:''},cost:{val:0,ts:''},stock:{val:0,ts:''},supplier:{val:'',ts:''}};a[c][f]={val:v,ts:new Date().toISOString()};localStorage.setItem('productData',JSON.stringify(a));if(f==='price')calculateTotal()}function getCellData(c,f,d){let a=JSON.parse(localStorage.getItem('productData')||'{}');return(a[c]&&a[c][f])?a[c][f].val:d}function renderItem(i,x){let l=document.createElement("li");l.className="item-row";let p=(i.price==0||i.price=="0")?"":i.price,c=(i.cost==0||i.cost=="0")?"":i.cost,s=(i.stock==0||i.stock=="0")?"":i.stock,st=(parseFloat(c)>0)?"cost-filled":"cost-empty";l.innerHTML=`<img src="${i.img}"><span class="barcode-text">${i.code}</span><input type="number" class="item-input" value="${p}" onchange="updateCellData('${i.code}','price',this.value)"><input type="number" class="item-input cost-input hidden-cost ${st}" value="${c}" onclick="toggleCostVisibility(this)" onchange="updateCellData('${i.code}','cost',this.value);updateCostStatus(this)"><input type="number" class="item-input" value="${s}" onchange="updateCellData('${i.code}','stock',this.value)"><input type="text" class="item-input" maxlength="1" value="${getCellData(i.code,'supplier','').substring(0,1)}" onchange="updateCellData('${i.code}','supplier',this.value)"><button class="btn-delete" onclick="removeItem(${x})">X</button>`;document.getElementById("itemList").appendChild(l);document.getElementById("itemList").scrollTop=document.getElementById("itemList").scrollHeight}async function onScanSuccess(d){new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();let i=takeSnapshot(),n={code:d,img:i,price:getCellData(d,'price',0),cost:getCellData(d,'cost',0),stock:getCellData(d,'stock',0)};scannedItems.push(n);renderItem(n,scannedItems.length-1);calculateTotal();fetch(`http://${SERVER_IP}:5000/`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:[n],timestamp:new Date().toISOString()})}).catch(()=>showStatus("⚠️ ออฟไลน์"));html5QrcodeScanner.pause();showStatus("✅ สแกนสำเร็จ!");setTimeout(()=>{if(isScanning)html5QrcodeScanner.resume()},1500)}function finishSale(){if(scannedItems.length===0)return showStatus("ยังไม่มีสินค้า!");fetch(`http://${SERVER_IP}:5000/`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:"finish",items:scannedItems})}).then(()=>{showStatus("✅ สำเร็จ!");scannedItems=[];document.getElementById("itemList").innerHTML="";calculateTotal()}).catch(()=>{let l=JSON.parse(localStorage.getItem('pendingSales')||'[]');l.push(...scannedItems);localStorage.setItem('pendingSales',JSON.stringify(l));showStatus("⚠️ บันทึกในมือถือ");scannedItems=[];document.getElementById("itemList").innerHTML="";calculateTotal()})}window.onload=()=>{html5QrcodeScanner=new Html5QrcodeScanner("reader",{fps:10,qrbox:{width:200,height:60},facingMode:"environment",formatsToSupport:[Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.QR_CODE]});html5QrcodeScanner.render(onScanSuccess);resetIdleTimer();document.addEventListener('mousemove',resetIdleTimer);document.addEventListener('touchstart',resetIdleTimer);document.addEventListener('click',resetIdleTimer)};
+        setInterval(()=>{const n=new Date();document.getElementById('clock').innerText=n.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'})+' '+n.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'})},1000);function showStatus(m){const s=document.getElementById("statusMessage");s.innerText=m;setTimeout(()=>{s.innerText=""},3000)}function updateCostStatus(e){const v=parseFloat(e.value)||0;v>0?e.classList.add('cost-filled'):e.classList.add('cost-empty');v>0?e.classList.remove('cost-empty'):e.classList.remove('cost-filled')}function toggleCostVisibility(e){e.classList.toggle('hidden-cost');e.classList.toggle('visible-cost')}function removeItem(i){scannedItems.splice(i,1);refreshList();calculateTotal()}function refreshList(){const i=document.getElementById("itemList");i.innerHTML="";scannedItems.forEach((x,j)=>renderItem(x,j))}function cancelBasket(){if(confirm("ยกเลิกทั้งตะกร้าใช่ไหม?")){scannedItems=[];document.getElementById("itemList").innerHTML="";calculateTotal()}}
+
+        function calculateTotal(){
+            let t=0, d=JSON.parse(localStorage.getItem('productData')||'{}');
+            let mode = localStorage.getItem('zenMode') || 'SELL';
+            if(mode !== 'CHECK'){
+                scannedItems.forEach(i=>{let p=d[i.code]&&d[i.code].price?d[i.code].price.val:0;t+=parseFloat(p)||0});
+            }
+            document.getElementById("btnFinish").innerText = (mode === 'CHECK') ? "ตรวจสอบรายการ" : "ชำระเงิน "+t+" บาท";
+        }
+
+        function takeSnapshot(){const v=document.getElementsByTagName('video')[0],c=document.getElementById('snapshotCanvas')||document.createElement('canvas');if(v&&v.videoWidth>0){c.width=100;c.height=100;c.getContext('2d').drawImage(v,0,0,100,100);return c.toDataURL('image/jpeg',0.5)}return""}function updateCellData(c,f,v){let a=JSON.parse(localStorage.getItem('productData')||'{}');if(!a[c])a[c]={price:{val:0,ts:''},cost:{val:0,ts:''},stock:{val:0,ts:''},supplier:{val:'',ts:''}};a[c][f]={val:v,ts:new Date().toISOString()};localStorage.setItem('productData',JSON.stringify(a));if(f==='price')calculateTotal()}function getCellData(c,f,d){let a=JSON.parse(localStorage.getItem('productData')||'{}');return(a[c]&&a[c][f])?a[c][f].val:d}function renderItem(i,x){let l=document.createElement("li");l.className="item-row";let p=(i.price==0||i.price=="0")?"":i.price,c=(i.cost==0||i.cost=="0")?"":i.cost,s=(i.stock==0||i.stock=="0")?"":i.stock,st=(parseFloat(c)>0)?"cost-filled":"cost-empty";l.innerHTML=`<img src="${i.img}"><span class="barcode-text">${i.code}</span><input type="number" class="item-input" value="${p}" onchange="updateCellData('${i.code}','price',this.value)"><input type="number" class="item-input cost-input hidden-cost ${st}" value="${c}" onclick="toggleCostVisibility(this)" onchange="updateCellData('${i.code}','cost',this.value);updateCostStatus(this)"><input type="number" class="item-input" value="${s}" onchange="updateCellData('${i.code}','stock',this.value)"><input type="text" class="item-input" maxlength="1" value="${getCellData(i.code,'supplier','').substring(0,1)}" onchange="updateCellData('${i.code}','supplier',this.value)"><button class="btn-delete" onclick="removeItem(${x})">X</button>`;document.getElementById("itemList").appendChild(l);document.getElementById("itemList").scrollTop=document.getElementById("itemList").scrollHeight}
+        
+        async function onScanSuccess(d){
+            new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
+            let mode = localStorage.getItem('zenMode') || 'SELL';
+            
+            if (mode === 'SELL') {
+                let data = JSON.parse(localStorage.getItem('productData')||'{}');
+                if(data[d]){
+                    let currentStock = parseInt(data[d].stock.val) || 0;
+                    data[d].stock.val = currentStock - 1;
+                    localStorage.setItem('productData', JSON.stringify(data));
+                }
+            }
+
+            let i=takeSnapshot(), n={code:d,img:i,price:getCellData(d,'price',0),cost:getCellData(d,'cost',0),stock:getCellData(d,'stock',0)};
+            scannedItems.push(n);
+            renderListAndCalculate();
+            
+            fetch(`http://${SERVER_IP}:5000/`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:mode,items:[n],timestamp:new Date().toISOString()})}).catch(()=>showStatus("⚠️ ออฟไลน์"));
+            html5QrcodeScanner.pause();
+            showStatus("✅ "+mode+" สำเร็จ!");
+            setTimeout(()=>{if(isScanning)html5QrcodeScanner.resume()},1500)
+        }
+
+        function renderListAndCalculate(){refreshList();calculateTotal()}
+        function finishSale(){if(scannedItems.length===0)return showStatus("ยังไม่มีสินค้า!");fetch(`http://${SERVER_IP}:5000/`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:"finish",items:scannedItems})}).then(()=>{showStatus("✅ สำเร็จ!");scannedItems=[];renderListAndCalculate()}).catch(()=>{let l=JSON.parse(localStorage.getItem('pendingSales')||'[]');l.push(...scannedItems);localStorage.getItem('pendingSales',JSON.stringify(l));showStatus("⚠️ บันทึกในมือถือ");scannedItems=[];renderListAndCalculate()})}window.onload=()=>{document.getElementById('modeSelect').value = localStorage.getItem('zenMode') || 'SELL';html5QrcodeScanner=new Html5QrcodeScanner("reader",{fps:10,qrbox:{width:200,height:60},facingMode:"environment",formatsToSupport:[Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.QR_CODE]});html5QrcodeScanner.render(onScanSuccess);resetIdleTimer();document.addEventListener('mousemove',resetIdleTimer);document.addEventListener('touchstart',resetIdleTimer);document.addEventListener('click',resetIdleTimer)};
     </script>
 </body>
 </html>
