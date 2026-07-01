@@ -114,7 +114,7 @@
             document.getElementById("itemList").scrollTop=document.getElementById("itemList").scrollHeight
         }
         
-        async function onScanSuccess(d){
+async function onScanSuccess(d){
             new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
             let mode = localStorage.getItem('zenMode') || 'SELL';
             if (mode === 'SELL') {
@@ -125,13 +125,34 @@
                     localStorage.setItem('productData', JSON.stringify(data));
                 }
             }
-            let i=takeSnapshot(), n={code:d,img:i,price:getCellData(d,'price',0),cost:getCellData(d,'cost',0),stock:getCellData(d,'stock',0)};
+            
+            // เพิ่มการดึง supplier เข้าไปในตัวแปร n
+            let i = takeSnapshot(), 
+                n = {
+                    code: d, 
+                    img: i, 
+                    price: getCellData(d, 'price', 0), 
+                    cost: getCellData(d, 'cost', 0), 
+                    stock: getCellData(d, 'stock', 0), 
+                    supplier: getCellData(d, 'supplier', '')
+                };
+            
             scannedItems.push(n);
             renderListAndCalculate();
-            fetch(`http://${SERVER_IP}:5000/`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:mode,items:[n],timestamp:new Date().toISOString()})}).catch(()=>showStatus("⚠️ ออฟไลน์"));
+            
+            fetch(`http://${SERVER_IP}:5000/`,{
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    mode: mode, 
+                    items: [n], 
+                    timestamp: new Date().toISOString()
+                })
+            }).catch(() => showStatus("⚠️ ออฟไลน์"));
+            
             html5QrcodeScanner.pause();
             showStatus("✅ "+mode+" สำเร็จ!");
-            setTimeout(()=>{if(isScanning)html5QrcodeScanner.resume()},1500)
+            setTimeout(() => { if(isScanning) html5QrcodeScanner.resume() }, 1500)
         }
 
         function renderListAndCalculate(){refreshList();calculateTotal()}
