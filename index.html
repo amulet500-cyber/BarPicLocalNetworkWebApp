@@ -1,35 +1,37 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>สแกนสินค้า ศิษย์พี่ Zen - ฉบับสมบูรณ์</title>
+    <title>สแกนสินค้า ศิษย์พี่ Zen - Sync เต็มรูปแบบ</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
         body{margin:0;padding:0;background:#000;height:100vh;overflow:hidden;font-family:sans-serif}
         #headerBar{position:fixed;top:0;left:0;width:100%;z-index:500;display:flex;justify-content:space-between;align-items:center;padding:5px 10px;color:#fff;height:35px;box-sizing:border-box;transition: background 0.3s;}
-        #modeSelect{background:rgba(0,0,0,0.5);color:#fff;border:1px solid #fff;padding:2px;font-size:0.8em;border-radius:4px}
-        #clock{font-size:0.8em}
+        #modeSelect{background:rgba(0,0,0,0.5);color:#fff;border:1px solid #fff;padding:2px;font-size:0.9em;border-radius:4px}
+        #clock{font-size:0.9em}
         #reader__dashboard_section{position:fixed;top:35px;left:0;width:100%;z-index:200;transform:scale(0.5);transform-origin:top center;background:rgba(0,0,0,0.3)!important;border-radius:10px;padding:5px!important}
         #reader{position:fixed;top:65px;left:0;width:100%;height:35vh;z-index:1}
-        #sleepOverlay{position:fixed;top:65px;left:0;width:100%;height:35vh;z-index:1000;background:rgba(0,0,0,0.9);color:#f1c40f;display:none;justify-content:center;align-items:center;font-size:1.2em;font-weight:bold;cursor:pointer;text-align:center}
+        #sleepOverlay{position:fixed;top:65px;left:0;width:100%;height:35vh;z-index:1000;background:rgba(0,0,0,0.9);color:#f1c40f;display:none;justify-content:center;align-items:center;font-size:1.3em;font-weight:bold;cursor:pointer;text-align:center}
         #reader__filescan_input,#reader__filescan_input+span,#reader__filescan_input+a{display:none!important}
-        #reader button{padding:4px 10px!important;font-size:1.2em!important;border:1px solid #f1c40f!important;border-radius:4px!important;color:#f1c40f!important;background:rgba(50,50,50,0.5)!important}
+        #reader button{padding:6px 12px!important;font-size:1.3em!important;border:1px solid #f1c40f!important;border-radius:5px!important;color:#f1c40f!important;background:rgba(50,50,50,0.5)!important}
         #reader__dashboard_section span,#reader__dashboard_section select{color:#f1c40f!important}
         #reader__dashboard_section select{background:rgba(0,0,0,0.5)!important;border:1px solid #f1c40f!important}
-        #cart{position:fixed;top:48vh;bottom:0;left:0;width:100%;background:rgba(255,255,255,0.15);border-radius:15px 15px 0 0;padding:10px;z-index:300;box-sizing:border-box;display:flex;flex-direction:column}
-        .cart-header,.item-row{display:grid;grid-template-columns:30px 2.5fr 35px 35px 35px 25px 25px;gap:3px;align-items:center;padding:4px 0;border-bottom:1px solid #777;font-size:0.6em;color:#fff}
-        .cart-header{border-bottom:1px solid #aaa;margin-bottom:5px;font-weight:700;text-align:center}
-        #itemList{flex-grow:1;overflow-y:auto;list-style-type:none;padding:0;margin:0 0 5px 0}
-        .item-row img{width:28px;height:28px;object-fit:cover;border:1px solid #ccc}
-        .barcode-text{font-size:1.2em;white-space:nowrap;overflow:hidden}
-        .item-input{width:100%;padding:2px;text-align:center;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.3);border-radius:3px;color:#fff;box-sizing:border-box;font-size:1em}
+        #cart{position:fixed;top:48vh;bottom:0;left:0;width:100%;background:rgba(255,255,255,0.15);border-radius:15px 15px 0 0;padding:8px;z-index:300;box-sizing:border-box;display:flex;flex-direction:column}
+        
+        .cart-header,.item-row{display:grid;grid-template-columns:26px 1.5fr 35px 37px 37px 37px 26px 24px;gap:3px;align-items:center;padding:4px 0;border-bottom:1px solid #777;font-size:0.58em;color:#fff}
+        .cart-header{border-bottom:1px solid #aaa;margin-bottom:4px;font-weight:700;text-align:center;font-size:0.64em}
+        #itemList{flex-grow:1;overflow-y:auto;list-style-type:none;padding:0;margin:0 0 4px 0}
+        .item-row img{width:23px;height:23px;object-fit:cover;border:1px solid #ccc}
+        .barcode-text{font-size:0.9em;white-space:nowrap;overflow:hidden}
+        .item-input{width:100%;padding:2px;text-align:center;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.3);border-radius:3px;color:#fff;box-sizing:border-box;font-size:1.05em}
+        
         .cost-input{transition:all .3s ease}.hidden-cost{color:rgba(255,255,255,0.01)!important;background:rgba(0,0,0,0.05)!important}
         .visible-cost{color:#fff!important;background:rgba(0,0,0,0.5)!important;border:1px solid #f1c40f!important}
         .cost-filled{border:1px solid rgba(201, 204, 46, 0.8)!important}.cost-empty{border:1px solid rgba(231, 73, 56, 0.8)!important}
-        .btn-delete{background:#e74c3c;color:#fff;border:none;border-radius:3px;padding:2px;font-weight:700;cursor:pointer}
-        .btn-finish{width:70%;padding:10px;font-size:1.1em;color:#fff;border:none;border-radius:8px;font-weight:700;transition: background 0.3s}
-        .btn-cancel{width:28%;padding:10px;font-size:1em;background-color:#c0392b;color:#fff;border:none;border-radius:8px;font-weight:700}
-        #statusMessage{color:#f1c40f;font-weight:700;text-align:center;height:18px;margin-bottom:5px;font-size:0.8em}
+        .btn-delete{background:#e74c3c;color:#fff;border:none;border-radius:3px;padding:3px;font-weight:700;cursor:pointer}
+        .btn-finish{width:70%;padding:10px;font-size:1.1em;color:#fff;border:none;border-radius:7px;font-weight:700;transition: background 0.3s}
+        .btn-cancel{width:28%;padding:10px;font-size:1em;background-color:#c0392b;color:#fff;border:none;border-radius:7px;font-weight:700}
+        #statusMessage{color:#f1c40f;font-weight:700;text-align:center;height:18px;margin-bottom:4px;font-size:0.8em}
     </style>
 </head>
 <body onclick="wakeScanner()">
@@ -45,15 +47,15 @@
     <div id="reader"></div>
     <div id="sleepOverlay" onclick="wakeScanner()">💤 กดที่นี่เพื่อสแกนสินค้า</div>
     <div id="cart">
-        <h3 style="margin:0 0 5px 0;text-align:center;color:#fff">ตะกร้าสินค้า</h3>
-        <div class="cart-header"><span>รูป</span><span>บาร์โค้ด</span><span>ราคา</span><span>ทุน</span><span>สต็อก</span><span>ร้าน</span><span>ลบ</span></div>
+        <h3 style="margin:0 0 4px 0;text-align:center;color:#fff;font-size:1em">ตะกร้าสินค้า</h3>
+        <div class="cart-header"><span>รูป</span><span>บาร์โค้ด</span><span>จำนวน</span><span>ราคา</span><span>ทุน</span><span>สต็อก</span><span>ร้าน</span><span>ลบ</span></div>
         <ul id="itemList"></ul>
         <div id="statusMessage"></div>
-        <div style="display:flex;gap:2px"><button class="btn-cancel" onclick="cancelBasket()">ยกเลิก</button><button id="btnFinish" class="btn-finish" onclick="finishSale()">ชำระเงิน</button></div>
+        <div style="display:flex;gap:3px"><button class="btn-cancel" onclick="cancelBasket()">ยกเลิก</button><button id="btnFinish" class="btn-finish" onclick="finishSale()">ชำระเงิน</button></div>
     </div>
     <script>
         const SERVER_IP='192.168.1.200';
-        let scannedItems=[],html5QrcodeScanner,idleTimer,isScanning=true;
+        let groupedItems={},html5QrcodeScanner,idleTimer,isScanning=true;
 
         function applyModeColor(mode){
             const header = document.getElementById('headerBar');
@@ -76,38 +78,48 @@
         }, 1000);
         
         function showStatus(m){const s=document.getElementById("statusMessage");s.innerText=m;setTimeout(()=>{s.innerText=""},3000)}
-        function updateCostStatus(e){const v=parseFloat(e.value)||0;v>0?e.classList.add('cost-filled'):e.classList.add('cost-empty');v>0?e.classList.remove('cost-empty'):e.classList.remove('cost-filled')}
-        function toggleCostVisibility(e){e.classList.toggle('hidden-cost');e.classList.toggle('visible-cost')}
         
-        function removeItem(i){
-            let itemToDelete = scannedItems[i];
-            scannedItems.splice(i,1);
-            refreshList();
-            calculateTotal();
-            fetch(`http://${SERVER_IP}:5000/`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:"delete",code:itemToDelete.code})}).catch(()=>showStatus("⚠️ ออฟไลน์"));
+        // ฟังก์ชันสั่ง Sync ข้อมูลทั้งหมดไปยังเครื่องแม่
+        function syncToServer(actionType = "update") {
+            fetch(`http://${SERVER_IP}:5000/`,{
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({
+                    action: actionType,
+                    items: Object.values(groupedItems)
+                })
+            }).catch(()=>showStatus("⚠️ ออฟไลน์"));
         }
         
-        function refreshList(){const i=document.getElementById("itemList");i.innerHTML="";scannedItems.forEach((x,j)=>renderItem(x,j))}
+        function removeItem(code){
+            delete groupedItems[code];
+            refreshList();
+            calculateTotal();
+            syncToServer("update"); // ส่งข้อมูลอัปเดตไปใหม่ทั้งหมด
+        }
+        
+        function refreshList(){const i=document.getElementById("itemList");i.innerHTML="";Object.values(groupedItems).forEach(x=>renderItem(x))}
         
         function cancelBasket(){
             if(confirm("ยกเลิกทั้งตะกร้าใช่ไหม?")){
-                scannedItems=[];
-                document.getElementById("itemList").innerHTML="";
+                groupedItems={};
+                refreshList();
                 calculateTotal();
+                syncToServer("update");
             }
         }
 
         function calculateTotal(){
             let t=0, d=JSON.parse(localStorage.getItem('productData')||'{}');
             let mode = localStorage.getItem('zenMode') || 'SELL';
-            let count = scannedItems.length;
-            scannedItems.forEach(i=>{
+            let count = Object.keys(groupedItems).length;
+            Object.values(groupedItems).forEach(i=>{
                 if(mode === 'SELL'){
                     let p = d[i.code] && d[i.code].price ? d[i.code].price.val : 0;
-                    t += parseFloat(p) || 0;
+                    t += (parseFloat(p) * i.qty) || 0;
                 } else if(mode === 'BUY'){
                     let c = d[i.code] && d[i.code].cost ? d[i.code].cost.val : 0;
-                    t += parseFloat(c) || 0;
+                    t += (parseFloat(c) * i.qty) || 0;
                 }
             });
             const btn = document.getElementById("btnFinish");
@@ -116,12 +128,6 @@
             else { btn.innerText = "(" + count + ") ชำระเงิน " + t + " บาท"; }
         }
 
-        function takeSnapshot(){
-            const v=document.getElementsByTagName('video')[0],c=document.getElementById('snapshotCanvas')||document.createElement('canvas');
-            if(v&&v.videoWidth>0){c.width=100;c.height=100;c.getContext('2d').drawImage(v,0,0,100,100);return c.toDataURL('image/jpeg',0.5)}
-            return ""
-        }
-        
         function updateCellData(c,f,v){
             let a=JSON.parse(localStorage.getItem('productData')||'{}');
             if(!a[c])a[c]={price:{val:0,ts:''},cost:{val:0,ts:''},stock:{val:0,ts:''},supplier:{val:'',ts:''}};
@@ -135,52 +141,54 @@
             return(a[c]&&a[c][f])?a[c][f].val:d
         }
         
-        function renderItem(i,x){
+        function renderItem(i){
             let l=document.createElement("li");l.className="item-row";
-            let p=(i.price==0||i.price=="0")?"":i.price, c=(i.cost==0||i.cost=="0")?"":i.cost, s=(i.stock==0||i.stock=="0")?"":i.stock, st=(parseFloat(c)>0)?"cost-filled":"cost-empty";
+            let p=getCellData(i.code,'price',0), c=getCellData(i.code,'cost',0), s=getCellData(i.code,'stock',0), st=(parseFloat(c)>0)?"cost-filled":"cost-empty";
             let mode = localStorage.getItem('zenMode') || 'SELL';
             let costClass = (mode === 'SELL') ? 'hidden-cost' : 'visible-cost';
-            l.innerHTML=`<img src="${i.img}"><span class="barcode-text">${i.code}</span><input type="number" class="item-input" value="${p}" onchange="updateCellData('${i.code}','price',this.value)"><input type="number" class="item-input cost-input ${costClass} ${st}" value="${c}" onclick="toggleCostVisibility(this)" onchange="updateCellData('${i.code}','cost',this.value);updateCostStatus(this)"><input type="number" class="item-input" value="${s}" onchange="updateCellData('${i.code}','stock',this.value)"><input type="text" class="item-input" maxlength="1" value="${getCellData(i.code,'supplier','').substring(0,1)}" onchange="updateCellData('${i.code}','supplier',this.value)"><button class="btn-delete" onclick="removeItem(${x})">X</button>`;
+            l.innerHTML=`<img src="${i.img}"><span class="barcode-text">${i.code}</span><input type="number" class="item-input" value="${i.qty}" onchange="groupedItems['${i.code}'].qty=this.value;calculateTotal()"><input type="number" class="item-input" value="${p}" onchange="updateCellData('${i.code}','price',this.value)"><input type="number" class="item-input cost-input ${costClass} ${st}" value="${c}" onclick="toggleCostVisibility(this)" onchange="updateCellData('${i.code}','cost',this.value)"><input type="number" class="item-input" value="${s}" onchange="updateCellData('${i.code}','stock',this.value)"><input type="text" class="item-input" maxlength="1" value="${getCellData(i.code,'supplier','').substring(0,1)}" onchange="updateCellData('${i.code}','supplier',this.value)"><button class="btn-delete" onclick="removeItem('${i.code}')">X</button>`;
             document.getElementById("itemList").appendChild(l);
-            document.getElementById("itemList").scrollTop=document.getElementById("itemList").scrollHeight
         }
         
         async function onScanSuccess(d){
             new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
             let mode = localStorage.getItem('zenMode') || 'SELL';
+            if(groupedItems[d]){
+                groupedItems[d].qty += 1;
+            } else {
+                groupedItems[d] = {code:d, img:takeSnapshot(), qty:1};
+            }
             if (mode === 'SELL') {
                 let data = JSON.parse(localStorage.getItem('productData')||'{}');
                 if(data[d]){
-                    let currentStock = parseInt(data[d].stock.val) || 0;
-                    data[d].stock.val = currentStock - 1;
+                    data[d].stock.val = parseInt(data[d].stock.val || 0) - 1;
                     localStorage.setItem('productData', JSON.stringify(data));
                 }
             }
-            let i = takeSnapshot(), n = {code:d, img:i, price:getCellData(d,'price',0), cost:getCellData(d,'cost',0), stock:getCellData(d,'stock',0), supplier:getCellData(d,'supplier','')};
-            scannedItems.push(n);
-            renderListAndCalculate();
-            fetch(`http://${SERVER_IP}:5000/`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:mode,items:[n],timestamp:new Date().toISOString()})}).catch(()=>showStatus("⚠️ ออฟไลน์"));
+            refreshList();
+            calculateTotal();
+            
+            // ส่งข้อมูลอัปเดตทั้งหมดไปยังเครื่องแม่
+            syncToServer("update");
+            
             html5QrcodeScanner.pause();
             showStatus("✅ "+mode+" สำเร็จ!");
             setTimeout(()=>{if(isScanning)html5QrcodeScanner.resume()},1500)
         }
 
-        function renderListAndCalculate(){refreshList();calculateTotal()}
+        function takeSnapshot(){
+            const v=document.getElementsByTagName('video')[0],c=document.createElement('canvas');
+            if(v&&v.videoWidth>0){c.width=100;c.height=100;c.getContext('2d').drawImage(v,0,0,100,100);return c.toDataURL('image/jpeg',0.5)}
+            return ""
+        }
         
         function finishSale(){
-            if(scannedItems.length===0)return showStatus("ยังไม่มีสินค้า!");
-            fetch(`http://${SERVER_IP}:5000/`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:"finish",items:scannedItems})}).then(()=>{
-                showStatus("✅ สำเร็จ!");
-                scannedItems=[];
-                renderListAndCalculate()
-            }).catch(()=>{
-                let l=JSON.parse(localStorage.getItem('pendingSales')||'[]');
-                l.push(...scannedItems);
-                localStorage.setItem('pendingSales',JSON.stringify(l));
-                showStatus("⚠️ บันทึกในมือถือ (ออฟไลน์)");
-                scannedItems=[];
-                renderListAndCalculate()
-            })
+            if(Object.keys(groupedItems).length===0)return showStatus("ยังไม่มีสินค้า!");
+            syncToServer("finish"); // ส่งคำสั่ง finish
+            showStatus("✅ สำเร็จ!");
+            groupedItems={};
+            refreshList();
+            calculateTotal();
         }
         
         window.onload=()=>{
