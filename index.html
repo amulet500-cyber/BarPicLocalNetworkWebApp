@@ -57,7 +57,14 @@
         function applyModeColor(mode){
             const header = document.getElementById('headerBar');
             const btn = document.getElementById('btnFinish');
-            const colors = {'SELL':'#27ae60', 'BUY':'#c0392b', 'CHECK':'#f1c40f'};
+            
+            // ปรับสีใหม่: SELL=เขียว, BUY=เหลือง, CHECK=ฟ้า
+            const colors = {
+                'SELL':'#27ae60', 
+                'BUY':'#f1c40f', 
+                'CHECK':'#3498db'
+            };
+            
             header.style.backgroundColor = colors[mode];
             btn.style.backgroundColor = colors[mode];
         }
