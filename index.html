@@ -68,7 +68,12 @@
         function sleepScanner(){if(isScanning){html5QrcodeScanner.clear().then(()=>{isScanning=false;document.getElementById('sleepOverlay').style.display='flex';showStatus("💤 พักสแกนเนอร์")})}}
         function wakeScanner(){if(!isScanning){isScanning=true;document.getElementById('sleepOverlay').style.display='none';showStatus("📷 พร้อมสแกน");html5QrcodeScanner.render(onScanSuccess);resetIdleTimer()}}
         
-        setInterval(()=>{const n=new Date();document.getElementById('clock').innerText=n.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'})+' '+n.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'})},1000);
+        setInterval(()=>{
+            const n=new Date();
+            const dateStr = n.toLocaleDateString('th-TH',{weekday:'short', day:'numeric', month:'short', year:'numeric'});
+            const timeStr = n.toLocaleTimeString('th-TH',{hour:'2-digit', minute:'2-digit', second:'2-digit'});
+            document.getElementById('clock').innerText = dateStr + ' ' + timeStr;
+        }, 1000);
         
         function showStatus(m){const s=document.getElementById("statusMessage");s.innerText=m;setTimeout(()=>{s.innerText=""},3000)}
         function updateCostStatus(e){const v=parseFloat(e.value)||0;v>0?e.classList.add('cost-filled'):e.classList.add('cost-empty');v>0?e.classList.remove('cost-empty'):e.classList.remove('cost-filled')}
@@ -79,7 +84,6 @@
             scannedItems.splice(i,1);
             refreshList();
             calculateTotal();
-            // ส่งคำสั่งลบไปยังเครื่องแม่
             fetch(`http://${SERVER_IP}:5000/`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:"delete",code:itemToDelete.code})}).catch(()=>showStatus("⚠️ ออฟไลน์"));
         }
         
