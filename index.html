@@ -100,6 +100,7 @@
         function calculateTotal(){
             let t=0, d=JSON.parse(localStorage.getItem('productData')||'{}');
             let mode = localStorage.getItem('zenMode') || 'SELL';
+            let count = scannedItems.length;
             scannedItems.forEach(i=>{
                 if(mode === 'SELL'){
                     let p = d[i.code] && d[i.code].price ? d[i.code].price.val : 0;
@@ -110,9 +111,9 @@
                 }
             });
             const btn = document.getElementById("btnFinish");
-            if(mode === 'CHECK'){ btn.innerText = "ตรวจสอบรายการ"; }
-            else if(mode === 'BUY'){ btn.innerText = "จ่ายเงิน " + t + " บาท"; }
-            else { btn.innerText = "ชำระเงิน " + t + " บาท"; }
+            if(mode === 'CHECK'){ btn.innerText = "(" + count + ") ตรวจสอบรายการ"; }
+            else if(mode === 'BUY'){ btn.innerText = "(" + count + ") จ่ายเงิน " + t + " บาท"; }
+            else { btn.innerText = "(" + count + ") ชำระเงิน " + t + " บาท"; }
         }
 
         function takeSnapshot(){
