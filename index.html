@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>สแกนสินค้า ศิษย์พี่ Zen - Sync เต็มรูปแบบ</title>
+    <title>สแกนสินค้า ศิษย์พี่ Zen - Sync & AutoScroll</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
@@ -79,7 +79,6 @@
         
         function showStatus(m){const s=document.getElementById("statusMessage");s.innerText=m;setTimeout(()=>{s.innerText=""},3000)}
         
-        // ฟังก์ชันสั่ง Sync พร้อมดึงข้อมูลจาก localStorage มาให้ครบ
         function syncToServer(actionType = "update") {
             let pData = JSON.parse(localStorage.getItem('productData') || '{}');
             let itemsToSync = Object.values(groupedItems).map(i => {
@@ -94,7 +93,6 @@
                     supplier: d.supplier.val
                 };
             });
-
             fetch(`http://${SERVER_IP}:5000/`,{
                 method:'POST',
                 headers:{'Content-Type':'application/json'},
@@ -112,7 +110,17 @@
             syncToServer("update");
         }
         
-        function refreshList(){const i=document.getElementById("itemList");i.innerHTML="";Object.values(groupedItems).forEach(x=>renderItem(x))}
+        function autoScrollToBottom(){
+            const list = document.getElementById("itemList");
+            list.scrollTop = list.scrollHeight;
+        }
+        
+        function refreshList(){
+            const i=document.getElementById("itemList");
+            i.innerHTML="";
+            Object.values(groupedItems).forEach(x=>renderItem(x));
+            autoScrollToBottom();
+        }
         
         function cancelBasket(){
             if(confirm("ยกเลิกทั้งตะกร้าใช่ไหม?")){
@@ -123,6 +131,7 @@
             }
         }
 
+        // ระบบคำนวณรองรับโหมด ซื้อ(ทุน) และ ขาย(ราคา)
         function calculateTotal(){
             let t=0, d=JSON.parse(localStorage.getItem('productData')||'{}');
             let mode = localStorage.getItem('zenMode') || 'SELL';
@@ -160,7 +169,13 @@
             let p=getCellData(i.code,'price',0), c=getCellData(i.code,'cost',0), s=getCellData(i.code,'stock',0), st=(parseFloat(c)>0)?"cost-filled":"cost-empty";
             let mode = localStorage.getItem('zenMode') || 'SELL';
             let costClass = (mode === 'SELL') ? 'hidden-cost' : 'visible-cost';
-            l.innerHTML=`<img src="${i.img}"><span class="barcode-text">${i.code}</span><input type="number" class="item-input" value="${i.qty}" onchange="groupedItems['${i.code}'].qty=this.value;calculateTotal();syncToServer('update')"><input type="number" class="item-input" value="${p}" onchange="updateCellData('${i.code}','price',this.value);syncToServer('update')"><input type="number" class="item-input cost-input ${costClass} ${st}" value="${c}" onclick="toggleCostVisibility(this)" onchange="updateCellData('${i.code}','cost',this.value);syncToServer('update')"><input type="number" class="item-input" value="${s}" onchange="updateCellData('${i.code}','stock',this.value);syncToServer('update')"><input type="text" class="item-input" maxlength="1" value="${getCellData(i.code,'supplier','').substring(0,1)}" onchange="updateCellData('${i.code}','supplier',this.value);syncToServer('update')"><button class="btn-delete" onclick="removeItem('${i.code}')">X</button>`;
+            l.innerHTML=`<img src="${i.img}"><span class="barcode-text">${i.code}</span>
+            <input type="number" class="item-input" value="${i.qty}" onfocus="this.select()" onchange="groupedItems['${i.code}'].qty=this.value;calculateTotal();syncToServer('update')">
+            <input type="number" class="item-input" value="${p}" onfocus="this.select()" onchange="updateCellData('${i.code}','price',this.value);calculateTotal()">
+            <input type="number" class="item-input cost-input ${costClass} ${st}" value="${c}" onfocus="this.select()" onclick="toggleCostVisibility(this)" onchange="updateCellData('${i.code}','cost',this.value);calculateTotal()">
+            <input type="number" class="item-input" value="${s}" onfocus="this.select()" onchange="updateCellData('${i.code}','stock',this.value)">
+            <input type="text" class="item-input" maxlength="1" value="${getCellData(i.code,'supplier','').substring(0,1)}" onfocus="this.select()" onchange="updateCellData('${i.code}','supplier',this.value)">
+            <button class="btn-delete" onclick="removeItem('${i.code}')">X</button>`;
             document.getElementById("itemList").appendChild(l);
         }
         
@@ -170,7 +185,7 @@
             new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
             let mode = localStorage.getItem('zenMode') || 'SELL';
             if(groupedItems[d]){
-                groupedItems[d].qty += 1;
+                groupedItems[d].qty = parseInt(groupedItems[d].qty) + 1;
             } else {
                 groupedItems[d] = {code:d, img:takeSnapshot(), qty:1};
             }
@@ -185,6 +200,18 @@
             calculateTotal();
             syncToServer("update");
             
+            setTimeout(() => {
+                const listItems = document.getElementById("itemList").getElementsByClassName("item-row");
+                for (let item of listItems) {
+                    if (item.querySelector('.barcode-text').innerText === d) {
+                        item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        item.style.backgroundColor = "rgba(241, 196, 15, 0.3)";
+                        setTimeout(() => item.style.backgroundColor = "", 500);
+                        break;
+                    }
+                }
+            }, 100);
+
             html5QrcodeScanner.pause();
             showStatus("✅ "+mode+" สำเร็จ!");
             setTimeout(()=>{if(isScanning)html5QrcodeScanner.resume()},1500)
