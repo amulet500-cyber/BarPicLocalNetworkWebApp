@@ -8,7 +8,10 @@
         body{margin:0;padding:0;background:#000;height:100vh;overflow:hidden;font-family:sans-serif}
         #headerBar{position:fixed;top:0;left:0;width:100%;z-index:500;display:flex;justify-content:space-between;align-items:center;padding:5px 10px;color:#fff;height:35px;box-sizing:border-box;transition: background 0.3s;}
         #modeSelect{background:rgba(0,0,0,0.5);color:#fff;border:1px solid #fff;padding:2px;font-size:0.9em;border-radius:4px}
-        #clock{font-size:0.9em}
+        #clock{font-size:0.8em; margin: 0 5px;}
+        /* สไตล์ Dropdown ขวามือ */
+        #fileDropdown{background:rgba(255,255,255,0.2);border:1px solid #fff;color:#fff;padding:2px 4px;border-radius:4px;font-size:0.8em;cursor:pointer}
+        
         #reader__dashboard_section{position:fixed;top:35px;left:0;width:100%;z-index:200;transform:scale(0.5);transform-origin:top center;background:rgba(0,0,0,0.3)!important;border-radius:10px;padding:5px!important}
         #reader{position:fixed;top:65px;left:0;width:100%;height:35vh;z-index:1}
         #sleepOverlay{position:fixed;top:65px;left:0;width:100%;height:35vh;z-index:1000;background:rgba(0,0,0,0.9);color:#f1c40f;display:none;justify-content:center;align-items:center;font-size:1.3em;font-weight:bold;cursor:pointer;text-align:center}
@@ -40,9 +43,15 @@
             <option value="SELL">ขาย</option>
             <option value="BUY">ซื้อ</option>
             <option value="CHECK">เช็ค</option>
+            <option value="PROD">คลัง</option>
         </select>
         <div id="clock">--:--:--</div>
-        <div></div>
+        <select id="fileDropdown" onchange="requestFile(this.value); this.selectedIndex=0;">
+            <option value="" disabled selected>เลือกไฟล์</option>
+            <option value="sell">Sell</option>
+            <option value="buy">Buy</option>
+            <option value="prod">Product</option>
+        </select>
     </div>
     <div id="reader"></div>
     <div id="sleepOverlay" onclick="wakeScanner()">💤 กดที่นี่เพื่อสแกนสินค้า</div>
@@ -55,14 +64,23 @@
     </div>
     <script>
         const SERVER_IP='192.168.1.200';
-        let groupedItems={},html5QrcodeScanner,idleTimer,isScanning=true, lastSyncedItems="";
+        let groupedItems={},html5QrcodeScanner,idleTimer,isScanning=true;
+
+        function requestFile(type) {
+            showStatus("กำลังเรียกไฟล์: " + type.toUpperCase());
+            fetch(`http://${SERVER_IP}:5000/`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({action: "load_file", fileType: type})
+            }).catch(()=>showStatus("⚠️ ออฟไลน์"));
+        }
 
         function applyModeColor(mode){
             const header = document.getElementById('headerBar');
             const btn = document.getElementById('btnFinish');
-            const colors = {'SELL':'#27ae60', 'BUY':'#f1c40f', 'CHECK':'#3498db'};
-            header.style.backgroundColor = colors[mode];
-            btn.style.backgroundColor = colors[mode];
+            const colors = {'SELL':'#27ae60', 'BUY':'#f1c40f', 'CHECK':'#3498db', 'PROD':'#8e44ad'};
+            header.style.backgroundColor = colors[mode] || '#27ae60';
+            btn.style.backgroundColor = colors[mode] || '#27ae60';
         }
 
         function changeMode(m){localStorage.setItem('zenMode',m);applyModeColor(m);showStatus("โหมด: "+m);calculateTotal();refreshList()}
@@ -79,20 +97,30 @@
         
         function showStatus(m){const s=document.getElementById("statusMessage");s.innerText=m;setTimeout(()=>{s.innerText=""},3000)}
         
-        function silentSync(actionType = "update") {
-            let itemsToSync = Object.values(groupedItems);
+        function syncToServer(actionType = "update") {
+            let pData = JSON.parse(localStorage.getItem('productData') || '{}');
+            let itemsToSync = Object.values(groupedItems).map(i => {
+                let d = pData[i.code] || { price: { val: 0 }, cost: { val: 0 }, stock: { val: 0 }, supplier: { val: '' } };
+                return {
+                    code: i.code, qty: i.qty, img: i.img,
+                    price: d.price.val, cost: d.cost.val, stock: d.stock.val, supplier: d.supplier.val
+                };
+            });
             fetch(`http://${SERVER_IP}:5000/`,{
                 method:'POST',
                 headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({ action: actionType, items: itemsToSync })
-            }).catch(()=>console.log("Sync เงียบๆ ไม่สำเร็จ"));
+                body:JSON.stringify({
+                    action: actionType,
+                    items: itemsToSync
+                })
+            }).catch(()=>showStatus("⚠️ ออฟไลน์"));
         }
         
         function removeItem(code){
             delete groupedItems[code];
             refreshList();
             calculateTotal();
-            silentSync("update");
+            syncToServer("update");
         }
         
         function autoScrollToBottom(){
@@ -112,7 +140,7 @@
                 groupedItems={};
                 refreshList();
                 calculateTotal();
-                silentSync("update");
+                syncToServer("update");
             }
         }
 
@@ -154,7 +182,7 @@
             let mode = localStorage.getItem('zenMode') || 'SELL';
             let costClass = (mode === 'SELL') ? 'hidden-cost' : 'visible-cost';
             l.innerHTML=`<img src="${i.img}"><span class="barcode-text">${i.code}</span>
-            <input type="number" class="item-input" value="${i.qty}" onfocus="this.select()" onchange="groupedItems['${i.code}'].qty=this.value;calculateTotal();silentSync('update')">
+            <input type="number" class="item-input" value="${i.qty}" onfocus="this.select()" onchange="groupedItems['${i.code}'].qty=this.value;calculateTotal();syncToServer('update')">
             <input type="number" class="item-input" value="${p}" onfocus="this.select()" onchange="updateCellData('${i.code}','price',this.value);calculateTotal()">
             <input type="number" class="item-input cost-input ${costClass} ${st}" value="${c}" onfocus="this.select()" onclick="toggleCostVisibility(this)" onchange="updateCellData('${i.code}','cost',this.value);calculateTotal()">
             <input type="number" class="item-input" value="${s}" onfocus="this.select()" onchange="updateCellData('${i.code}','stock',this.value)">
@@ -182,7 +210,7 @@
             }
             refreshList();
             calculateTotal();
-            silentSync("update"); // ส่งแบบเงียบทันที
+            syncToServer("update");
             
             setTimeout(() => {
                 const listItems = document.getElementById("itemList").getElementsByClassName("item-row");
@@ -197,8 +225,8 @@
             }, 100);
 
             html5QrcodeScanner.pause();
-            showStatus("✅ เพิ่มรายการ!");
-            setTimeout(()=>{if(isScanning)html5QrcodeScanner.resume()}, 1000)
+            showStatus("✅ "+mode+" สำเร็จ!");
+            setTimeout(()=>{if(isScanning)html5QrcodeScanner.resume()},1500)
         }
 
         function takeSnapshot(){
@@ -207,26 +235,13 @@
             return ""
         }
         
-        async function finishSale(){
-            if(Object.keys(groupedItems).length===0) return showStatus("ยังไม่มีสินค้า!");
-            const btn = document.getElementById("btnFinish");
-            btn.innerText = "กำลังบันทึก...";
-            btn.disabled = true;
-            try {
-                const res = await fetch(`http://${SERVER_IP}:5000/`, {
-                    method:'POST',
-                    headers:{'Content-Type':'application/json'},
-                    body:JSON.stringify({ action: 'finish', items: Object.values(groupedItems) })
-                });
-                if(res.ok) {
-                    showStatus("✅ บันทึกสำเร็จ!");
-                    groupedItems={};
-                    refreshList();
-                    calculateTotal();
-                } else { showStatus("❌ บันทึกไม่สำเร็จ"); }
-            } catch(e) { showStatus("⚠️ เชื่อมต่อไม่ได้"); }
-            btn.innerText = "ชำระเงิน";
-            btn.disabled = false;
+        function finishSale(){
+            if(Object.keys(groupedItems).length===0)return showStatus("ยังไม่มีสินค้า!");
+            syncToServer("finish");
+            showStatus("✅ สำเร็จ!");
+            groupedItems={};
+            refreshList();
+            calculateTotal();
         }
         
         window.onload=()=>{
