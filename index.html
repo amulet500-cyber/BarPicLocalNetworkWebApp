@@ -44,11 +44,11 @@
             <option value="CHECK">เช็ค</option>
         </select>
         <div id="clock">--:--:--</div>
-        <select id="fileDropdown" onchange="requestFile(this.value); this.selectedIndex=0;">
+        <select id="fileDropdown" onchange="handleFileSelect(this.value); this.selectedIndex=0;">
             <option value="" disabled selected>เลือกไฟล์</option>
-            <option value="sell">Sell</option>
-            <option value="buy">Buy</option>
-            <option value="prod">Product</option>
+            <option id="buyOption" value="buy">Buy.txt</option>
+            <option id="sellOption" value="sell">Sell</option>
+            <option value="prod">Product.txt</option>
         </select>
     </div>
     <div id="reader"></div>
@@ -64,13 +64,53 @@
         const SERVER_IP='192.168.1.200';
         let groupedItems={},html5QrcodeScanner,idleTimer,isScanning=true;
 
-        function requestFile(type) {
-            showStatus("กำลังเรียกไฟล์: " + type.toUpperCase());
-            fetch(`http://${SERVER_IP}:5000/`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({action: "load_file", fileType: type})
-            }).catch(()=>showStatus("⚠️ ออฟไลน์"));
+        function handleFileSelect(val) {
+            if (val === 'buy') loadBuyFile();
+            else if (val.endsWith('.txt')) loadDataFromServer(val);
+        }
+
+        async function loadBuyFile() {
+            try {
+                let input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.txt';
+                input.onchange = async e => {
+                    let file = e.target.files[0];
+                    if (file.name !== 'buy.txt') { alert("⚠️ ต้องเป็นไฟล์ buy.txt เท่านั้น!"); return; }
+                    let text = await file.text();
+                    processBuyData(text);
+                };
+                input.click();
+            } catch (err) { showStatus("⚠️ ยกเลิกการเลือกไฟล์"); }
+        }
+
+        async function loadDataFromServer(fileName) {
+            try {
+                let res = await fetch(`http://${SERVER_IP}:5000/load?file=${fileName}`);
+                let text = await res.text();
+                processBuyData(text);
+                showStatus("✅ โหลด " + fileName + " สำเร็จ");
+            } catch(e) { showStatus("⚠️ โหลดจาก Server ไม่ได้"); }
+        }
+
+        function processBuyData(text) {
+            let lines = text.split('\n');
+            let data = JSON.parse(localStorage.getItem('productData') || '{}');
+            lines.forEach(line => {
+                let cleanLine = line.trim();
+                if(!cleanLine) return;
+                let [code, price, cost, stock, supplier] = cleanLine.split('-');
+                if(code) {
+                    data[code] = {
+                        price: {val: price || 0},
+                        cost: {val: cost || 0},
+                        stock: {val: stock || 0},
+                        supplier: {val: supplier || ''}
+                    };
+                }
+            });
+            localStorage.setItem('productData', JSON.stringify(data));
+            refreshList();
         }
 
         function applyModeColor(mode){
@@ -199,10 +239,15 @@
             } else {
                 groupedItems[d] = {code:d, img:takeSnapshot(), qty:1};
             }
+            let data = JSON.parse(localStorage.getItem('productData')||'{}');
             if (mode === 'SELL') {
-                let data = JSON.parse(localStorage.getItem('productData')||'{}');
                 if(data[d]){
                     data[d].stock.val = parseInt(data[d].stock.val || 0) - 1;
+                    localStorage.setItem('productData', JSON.stringify(data));
+                }
+            } else if (mode === 'BUY') {
+                if(data[d]){
+                    data[d].stock.val = parseInt(data[d].stock.val || 0) + 1;
                     localStorage.setItem('productData', JSON.stringify(data));
                 }
             }
@@ -243,6 +288,13 @@
         }
         
         window.onload=()=>{
+            const n=new Date();
+            const fileName = `${String(n.getDate()).padStart(2,'0')}-${String(n.getMonth()+1).padStart(2,'0')}-${n.getFullYear()+543}.txt`;
+            const buyOpt = document.getElementById('buyOption');
+            const sellOpt = document.getElementById('sellOption');
+            buyOpt.value = fileName; buyOpt.text = "Buy " + fileName;
+            sellOpt.value = fileName; sellOpt.text = "Sell " + fileName;
+
             let m=localStorage.getItem('zenMode') || 'SELL';
             document.getElementById('modeSelect').value = m;
             applyModeColor(m);
