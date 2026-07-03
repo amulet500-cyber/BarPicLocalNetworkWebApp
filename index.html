@@ -55,7 +55,7 @@
     </div>
     <script>
         const SERVER_IP='192.168.1.200';
-        let groupedItems={},html5QrcodeScanner,idleTimer,isScanning=true;
+        let groupedItems={},html5QrcodeScanner,idleTimer,isScanning=true, lastSyncedItems="";
 
         function applyModeColor(mode){
             const header = document.getElementById('headerBar');
@@ -79,35 +79,20 @@
         
         function showStatus(m){const s=document.getElementById("statusMessage");s.innerText=m;setTimeout(()=>{s.innerText=""},3000)}
         
-        function syncToServer(actionType = "update") {
-            let pData = JSON.parse(localStorage.getItem('productData') || '{}');
-            let itemsToSync = Object.values(groupedItems).map(i => {
-                let d = pData[i.code] || { price: { val: 0 }, cost: { val: 0 }, stock: { val: 0 }, supplier: { val: '' } };
-                return {
-                    code: i.code,
-                    qty: i.qty,
-                    img: i.img,
-                    price: d.price.val,
-                    cost: d.cost.val,
-                    stock: d.stock.val,
-                    supplier: d.supplier.val
-                };
-            });
+        function silentSync(actionType = "update") {
+            let itemsToSync = Object.values(groupedItems);
             fetch(`http://${SERVER_IP}:5000/`,{
                 method:'POST',
                 headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({
-                    action: actionType,
-                    items: itemsToSync
-                })
-            }).catch(()=>showStatus("⚠️ ออฟไลน์"));
+                body:JSON.stringify({ action: actionType, items: itemsToSync })
+            }).catch(()=>console.log("Sync เงียบๆ ไม่สำเร็จ"));
         }
         
         function removeItem(code){
             delete groupedItems[code];
             refreshList();
             calculateTotal();
-            syncToServer("update");
+            silentSync("update");
         }
         
         function autoScrollToBottom(){
@@ -127,11 +112,10 @@
                 groupedItems={};
                 refreshList();
                 calculateTotal();
-                syncToServer("update");
+                silentSync("update");
             }
         }
 
-        // ระบบคำนวณรองรับโหมด ซื้อ(ทุน) และ ขาย(ราคา)
         function calculateTotal(){
             let t=0, d=JSON.parse(localStorage.getItem('productData')||'{}');
             let mode = localStorage.getItem('zenMode') || 'SELL';
@@ -170,7 +154,7 @@
             let mode = localStorage.getItem('zenMode') || 'SELL';
             let costClass = (mode === 'SELL') ? 'hidden-cost' : 'visible-cost';
             l.innerHTML=`<img src="${i.img}"><span class="barcode-text">${i.code}</span>
-            <input type="number" class="item-input" value="${i.qty}" onfocus="this.select()" onchange="groupedItems['${i.code}'].qty=this.value;calculateTotal();syncToServer('update')">
+            <input type="number" class="item-input" value="${i.qty}" onfocus="this.select()" onchange="groupedItems['${i.code}'].qty=this.value;calculateTotal();silentSync('update')">
             <input type="number" class="item-input" value="${p}" onfocus="this.select()" onchange="updateCellData('${i.code}','price',this.value);calculateTotal()">
             <input type="number" class="item-input cost-input ${costClass} ${st}" value="${c}" onfocus="this.select()" onclick="toggleCostVisibility(this)" onchange="updateCellData('${i.code}','cost',this.value);calculateTotal()">
             <input type="number" class="item-input" value="${s}" onfocus="this.select()" onchange="updateCellData('${i.code}','stock',this.value)">
@@ -198,7 +182,7 @@
             }
             refreshList();
             calculateTotal();
-            syncToServer("update");
+            silentSync("update"); // ส่งแบบเงียบทันที
             
             setTimeout(() => {
                 const listItems = document.getElementById("itemList").getElementsByClassName("item-row");
@@ -213,8 +197,8 @@
             }, 100);
 
             html5QrcodeScanner.pause();
-            showStatus("✅ "+mode+" สำเร็จ!");
-            setTimeout(()=>{if(isScanning)html5QrcodeScanner.resume()},1500)
+            showStatus("✅ เพิ่มรายการ!");
+            setTimeout(()=>{if(isScanning)html5QrcodeScanner.resume()}, 1000)
         }
 
         function takeSnapshot(){
@@ -223,13 +207,26 @@
             return ""
         }
         
-        function finishSale(){
-            if(Object.keys(groupedItems).length===0)return showStatus("ยังไม่มีสินค้า!");
-            syncToServer("finish");
-            showStatus("✅ สำเร็จ!");
-            groupedItems={};
-            refreshList();
-            calculateTotal();
+        async function finishSale(){
+            if(Object.keys(groupedItems).length===0) return showStatus("ยังไม่มีสินค้า!");
+            const btn = document.getElementById("btnFinish");
+            btn.innerText = "กำลังบันทึก...";
+            btn.disabled = true;
+            try {
+                const res = await fetch(`http://${SERVER_IP}:5000/`, {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({ action: 'finish', items: Object.values(groupedItems) })
+                });
+                if(res.ok) {
+                    showStatus("✅ บันทึกสำเร็จ!");
+                    groupedItems={};
+                    refreshList();
+                    calculateTotal();
+                } else { showStatus("❌ บันทึกไม่สำเร็จ"); }
+            } catch(e) { showStatus("⚠️ เชื่อมต่อไม่ได้"); }
+            btn.innerText = "ชำระเงิน";
+            btn.disabled = false;
         }
         
         window.onload=()=>{
