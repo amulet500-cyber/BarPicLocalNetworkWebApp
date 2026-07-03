@@ -274,7 +274,7 @@
 
         function takeSnapshot(){
             const v=document.getElementsByTagName('video')[0],c=document.createElement('canvas');
-            if(v&&v.videoWidth>0){c.width=100;c.height=100;c.getContext('2d').drawImage(v,0,0,100,100);return c.toDataURL('image/jpeg',0.5)}
+            if(v&&v.videoWidth>0){c.width=500;c.height=500;c.getContext('2d').drawImage(v,0,0,500,500);return c.toDataURL('image/jpeg',0.5)}
             return ""
         }
         
