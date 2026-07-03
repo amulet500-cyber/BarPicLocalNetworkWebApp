@@ -9,7 +9,6 @@
         #headerBar{position:fixed;top:0;left:0;width:100%;z-index:500;display:flex;justify-content:space-between;align-items:center;padding:5px 10px;color:#fff;height:35px;box-sizing:border-box;transition: background 0.3s;}
         #modeSelect{background:rgba(0,0,0,0.5);color:#fff;border:1px solid #fff;padding:2px;font-size:0.9em;border-radius:4px}
         #clock{font-size:0.8em; margin: 0 5px;}
-        /* สไตล์ Dropdown ขวามือ */
         #fileDropdown{background:rgba(255,255,255,0.2);border:1px solid #fff;color:#fff;padding:2px 4px;border-radius:4px;font-size:0.8em;cursor:pointer}
         
         #reader__dashboard_section{position:fixed;top:35px;left:0;width:100%;z-index:200;transform:scale(0.5);transform-origin:top center;background:rgba(0,0,0,0.3)!important;border-radius:10px;padding:5px!important}
@@ -43,7 +42,6 @@
             <option value="SELL">ขาย</option>
             <option value="BUY">ซื้อ</option>
             <option value="CHECK">เช็ค</option>
-            <option value="PROD">คลัง</option>
         </select>
         <div id="clock">--:--:--</div>
         <select id="fileDropdown" onchange="requestFile(this.value); this.selectedIndex=0;">
@@ -78,7 +76,7 @@
         function applyModeColor(mode){
             const header = document.getElementById('headerBar');
             const btn = document.getElementById('btnFinish');
-            const colors = {'SELL':'#27ae60', 'BUY':'#f1c40f', 'CHECK':'#3498db', 'PROD':'#8e44ad'};
+            const colors = {'SELL':'#27ae60', 'BUY':'#f1c40f', 'CHECK':'#3498db'};
             header.style.backgroundColor = colors[mode] || '#27ae60';
             btn.style.backgroundColor = colors[mode] || '#27ae60';
         }
