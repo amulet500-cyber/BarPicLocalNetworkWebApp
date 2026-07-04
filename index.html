@@ -4,37 +4,7 @@
     <title>สแกนสินค้า ศิษย์พี่ Zen - Sync & AutoScroll</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://unpkg.com/html5-qrcode"></script>
-    <style>
-        body{margin:0;padding:0;background:#000;height:100vh;overflow:hidden;font-family:sans-serif}
-        #headerBar{position:fixed;top:0;left:0;width:100%;z-index:500;display:flex;justify-content:space-between;align-items:center;padding:5px 10px;color:#fff;height:35px;box-sizing:border-box;transition: background 0.3s;}
-        #modeSelect{background:rgba(0,0,0,0.5);color:#fff;border:1px solid #fff;padding:2px;font-size:0.9em;border-radius:4px}
-        #clock{font-size:0.8em; margin: 0 5px;}
-        #fileDropdown{background:rgba(255,255,255,0.2);border:1px solid #fff;color:#fff;padding:2px 4px;border-radius:4px;font-size:0.8em;cursor:pointer}
-        
-        #reader__dashboard_section{position:fixed;top:35px;left:0;width:100%;z-index:200;transform:scale(0.5);transform-origin:top center;background:rgba(0,0,0,0.3)!important;border-radius:10px;padding:5px!important}
-        #reader{position:fixed;top:65px;left:0;width:100%;height:35vh;z-index:1}
-        #sleepOverlay{position:fixed;top:65px;left:0;width:100%;height:35vh;z-index:1000;background:rgba(0,0,0,0.9);color:#f1c40f;display:none;justify-content:center;align-items:center;font-size:1.3em;font-weight:bold;cursor:pointer;text-align:center}
-        #reader__filescan_input,#reader__filescan_input+span,#reader__filescan_input+a{display:none!important}
-        #reader button{padding:6px 12px!important;font-size:1.3em!important;border:1px solid #f1c40f!important;border-radius:5px!important;color:#f1c40f!important;background:rgba(50,50,50,0.5)!important}
-        #reader__dashboard_section span,#reader__dashboard_section select{color:#f1c40f!important}
-        #reader__dashboard_section select{background:rgba(0,0,0,0.5)!important;border:1px solid #f1c40f!important}
-        #cart{position:fixed;top:48vh;bottom:0;left:0;width:100%;background:rgba(255,255,255,0.15);border-radius:15px 15px 0 0;padding:8px;z-index:300;box-sizing:border-box;display:flex;flex-direction:column}
-        
-        .cart-header,.item-row{display:grid;grid-template-columns:26px 1.5fr 35px 37px 37px 37px 26px 24px;gap:3px;align-items:center;padding:4px 0;border-bottom:1px solid #777;font-size:0.58em;color:#fff}
-        .cart-header{border-bottom:1px solid #aaa;margin-bottom:4px;font-weight:700;text-align:center;font-size:0.64em}
-        #itemList{flex-grow:1;overflow-y:auto;list-style-type:none;padding:0;margin:0 0 4px 0}
-        .item-row img{width:23px;height:23px;object-fit:cover;border:1px solid #ccc}
-        .barcode-text{font-size:0.9em;white-space:nowrap;overflow:hidden}
-        .item-input{width:100%;padding:2px;text-align:center;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.3);border-radius:3px;color:#fff;box-sizing:border-box;font-size:1.05em}
-        
-        .cost-input{transition:all .3s ease}.hidden-cost{color:rgba(255,255,255,0.01)!important;background:rgba(0,0,0,0.05)!important}
-        .visible-cost{color:#fff!important;background:rgba(0,0,0,0.5)!important;border:1px solid #f1c40f!important}
-        .cost-filled{border:1px solid rgba(201, 204, 46, 0.8)!important}.cost-empty{border:1px solid rgba(231, 73, 56, 0.8)!important}
-        .btn-delete{background:#e74c3c;color:#fff;border:none;border-radius:3px;padding:3px;font-weight:700;cursor:pointer}
-        .btn-finish{width:70%;padding:10px;font-size:1.1em;color:#fff;border:none;border-radius:7px;font-weight:700;transition: background 0.3s}
-        .btn-cancel{width:28%;padding:10px;font-size:1em;background-color:#c0392b;color:#fff;border:none;border-radius:7px;font-weight:700}
-        #statusMessage{color:#f1c40f;font-weight:700;text-align:center;height:18px;margin-bottom:4px;font-size:0.8em}
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body onclick="wakeScanner()">
     <div id="headerBar">
@@ -44,12 +14,6 @@
             <option value="CHECK">เช็ค</option>
         </select>
         <div id="clock">--:--:--</div>
-        <select id="fileDropdown" onchange="handleFileSelect(this.value); this.selectedIndex=0;">
-            <option value="" disabled selected>เลือกไฟล์</option>
-            <option id="buyOption" value="buy">Buy.txt</option>
-            <option id="sellOption" value="sell">Sell</option>
-            <option value="prod">Product.txt</option>
-        </select>
     </div>
     <div id="reader"></div>
     <div id="sleepOverlay" onclick="wakeScanner()">💤 กดที่นี่เพื่อสแกนสินค้า</div>
@@ -61,57 +25,9 @@
         <div style="display:flex;gap:3px"><button class="btn-cancel" onclick="cancelBasket()">ยกเลิก</button><button id="btnFinish" class="btn-finish" onclick="finishSale()">ชำระเงิน</button></div>
     </div>
     <script>
+        // (ส่วน Script เดิมของศิษย์พี่)
         const SERVER_IP='192.168.1.200';
         let groupedItems={},html5QrcodeScanner,idleTimer,isScanning=true;
-
-        function handleFileSelect(val) {
-            if (val === 'buy') loadBuyFile();
-            else if (val.endsWith('.txt')) loadDataFromServer(val);
-        }
-
-        async function loadBuyFile() {
-            try {
-                let input = document.createElement('input');
-                input.type = 'file';
-                input.accept = '.txt';
-                input.onchange = async e => {
-                    let file = e.target.files[0];
-                    if (file.name !== 'buy.txt') { alert("⚠️ ต้องเป็นไฟล์ buy.txt เท่านั้น!"); return; }
-                    let text = await file.text();
-                    processBuyData(text);
-                };
-                input.click();
-            } catch (err) { showStatus("⚠️ ยกเลิกการเลือกไฟล์"); }
-        }
-
-        async function loadDataFromServer(fileName) {
-            try {
-                let res = await fetch(`http://${SERVER_IP}:5000/load?file=${fileName}`);
-                let text = await res.text();
-                processBuyData(text);
-                showStatus("✅ โหลด " + fileName + " สำเร็จ");
-            } catch(e) { showStatus("⚠️ โหลดจาก Server ไม่ได้"); }
-        }
-
-        function processBuyData(text) {
-            let lines = text.split('\n');
-            let data = JSON.parse(localStorage.getItem('productData') || '{}');
-            lines.forEach(line => {
-                let cleanLine = line.trim();
-                if(!cleanLine) return;
-                let [code, price, cost, stock, supplier] = cleanLine.split('-');
-                if(code) {
-                    data[code] = {
-                        price: {val: price || 0},
-                        cost: {val: cost || 0},
-                        stock: {val: stock || 0},
-                        supplier: {val: supplier || ''}
-                    };
-                }
-            });
-            localStorage.setItem('productData', JSON.stringify(data));
-            refreshList();
-        }
 
         function applyModeColor(mode){
             const header = document.getElementById('headerBar');
@@ -120,87 +36,42 @@
             header.style.backgroundColor = colors[mode] || '#27ae60';
             btn.style.backgroundColor = colors[mode] || '#27ae60';
         }
-
         function changeMode(m){localStorage.setItem('zenMode',m);applyModeColor(m);showStatus("โหมด: "+m);calculateTotal();refreshList()}
         function resetIdleTimer(){clearTimeout(idleTimer);idleTimer=setTimeout(sleepScanner,300000)}
         function sleepScanner(){if(isScanning){html5QrcodeScanner.clear().then(()=>{isScanning=false;document.getElementById('sleepOverlay').style.display='flex';showStatus("💤 พักสแกนเนอร์")})}}
         function wakeScanner(){if(!isScanning){isScanning=true;document.getElementById('sleepOverlay').style.display='none';showStatus("📷 พร้อมสแกน");html5QrcodeScanner.render(onScanSuccess);resetIdleTimer()}}
-        
         setInterval(()=>{
             const n=new Date();
             const dateStr = n.toLocaleDateString('th-TH',{weekday:'short', day:'numeric', month:'short', year:'numeric'});
             const timeStr = n.toLocaleTimeString('th-TH',{hour:'2-digit', minute:'2-digit', second:'2-digit'});
             document.getElementById('clock').innerText = dateStr + ' ' + timeStr;
         }, 1000);
-        
         function showStatus(m){const s=document.getElementById("statusMessage");s.innerText=m;setTimeout(()=>{s.innerText=""},3000)}
-        
         function syncToServer(actionType = "update") {
             let pData = JSON.parse(localStorage.getItem('productData') || '{}');
             let itemsToSync = Object.values(groupedItems).map(i => {
                 let d = pData[i.code] || { price: { val: 0 }, cost: { val: 0 }, stock: { val: 0 }, supplier: { val: '' } };
-                return {
-                    code: i.code, qty: i.qty, img: i.img,
-                    price: d.price.val, cost: d.cost.val, stock: d.stock.val, supplier: d.supplier.val
-                };
+                return { code: i.code, qty: i.qty, img: i.img, price: d.price.val, cost: d.cost.val, stock: d.stock.val, supplier: d.supplier.val };
             });
-            fetch(`http://${SERVER_IP}:5000/`,{
-                method:'POST',
-                headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({
-                    action: actionType,
-                    items: itemsToSync
-                })
-            }).catch(()=>showStatus("⚠️ ออฟไลน์"));
+            fetch(`http://${SERVER_IP}:5000/`,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ action: actionType, items: itemsToSync }) }).catch(()=>showStatus("⚠️ ออฟไลน์"));
         }
-        
-        function removeItem(code){
-            delete groupedItems[code];
-            refreshList();
-            calculateTotal();
-            syncToServer("update");
-        }
-        
-        function autoScrollToBottom(){
-            const list = document.getElementById("itemList");
-            list.scrollTop = list.scrollHeight;
-        }
-        
-        function refreshList(){
-            const i=document.getElementById("itemList");
-            i.innerHTML="";
-            Object.values(groupedItems).forEach(x=>renderItem(x));
-            autoScrollToBottom();
-        }
-        
-        function cancelBasket(){
-            if(confirm("ยกเลิกทั้งตะกร้าใช่ไหม?")){
-                groupedItems={};
-                refreshList();
-                calculateTotal();
-                syncToServer("update");
-            }
-        }
-
+        function removeItem(code){ delete groupedItems[code]; refreshList(); calculateTotal(); syncToServer("update"); }
+        function autoScrollToBottom(){ const list = document.getElementById("itemList"); list.scrollTop = list.scrollHeight; }
+        function refreshList(){ const i=document.getElementById("itemList"); i.innerHTML=""; Object.values(groupedItems).forEach(x=>renderItem(x)); autoScrollToBottom(); }
+        function cancelBasket(){ if(confirm("ยกเลิกทั้งตะกร้าใช่ไหม?")){ groupedItems={}; refreshList(); calculateTotal(); syncToServer("update"); } }
         function calculateTotal(){
             let t=0, d=JSON.parse(localStorage.getItem('productData')||'{}');
             let mode = localStorage.getItem('zenMode') || 'SELL';
             let count = Object.keys(groupedItems).length;
             Object.values(groupedItems).forEach(i=>{
-                if(mode === 'SELL'){
-                    let p = d[i.code] && d[i.code].price ? d[i.code].price.val : 0;
-                    t += (parseFloat(p) * i.qty) || 0;
-                } else if(mode === 'BUY'){
-                    let c = d[i.code] && d[i.code].cost ? d[i.code].cost.val : 0;
-                    t += (parseFloat(c) * i.qty) || 0;
-                }
+                if(mode === 'SELL'){ let p = d[i.code] && d[i.code].price ? d[i.code].price.val : 0; t += (parseFloat(p) * i.qty) || 0; }
+                else if(mode === 'BUY'){ let c = d[i.code] && d[i.code].cost ? d[i.code].cost.val : 0; t += (parseFloat(c) * i.qty) || 0; }
             });
             const btn = document.getElementById("btnFinish");
             if(mode === 'CHECK'){ btn.innerText = "(" + count + ") ตรวจสอบรายการ"; }
             else if(mode === 'BUY'){ btn.innerText = "(" + count + ") จ่ายเงิน " + t + " บาท"; }
             else { btn.innerText = "(" + count + ") ชำระเงิน " + t + " บาท"; }
         }
-
         function updateCellData(c,f,v){
             let a=JSON.parse(localStorage.getItem('productData')||'{}');
             if(!a[c])a[c]={price:{val:0,ts:''},cost:{val:0,ts:''},stock:{val:0,ts:''},supplier:{val:'',ts:''}};
@@ -208,12 +79,7 @@
             localStorage.setItem('productData',JSON.stringify(a));
             if(f==='price'||f==='cost')calculateTotal()
         }
-        
-        function getCellData(c,f,d){
-            let a=JSON.parse(localStorage.getItem('productData')||'{}');
-            return(a[c]&&a[c][f])?a[c][f].val:d
-        }
-        
+        function getCellData(c,f,d){ let a=JSON.parse(localStorage.getItem('productData')||'{}'); return(a[c]&&a[c][f])?a[c][f].val:d }
         function renderItem(i){
             let l=document.createElement("li");l.className="item-row";
             let p=getCellData(i.code,'price',0), c=getCellData(i.code,'cost',0), s=getCellData(i.code,'stock',0), st=(parseFloat(c)>0)?"cost-filled":"cost-empty";
@@ -228,33 +94,16 @@
             <button class="btn-delete" onclick="removeItem('${i.code}')">X</button>`;
             document.getElementById("itemList").appendChild(l);
         }
-        
         function toggleCostVisibility(el){el.classList.toggle('hidden-cost');el.classList.toggle('visible-cost')}
-        
         async function onScanSuccess(d){
             new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
             let mode = localStorage.getItem('zenMode') || 'SELL';
-            if(groupedItems[d]){
-                groupedItems[d].qty = parseInt(groupedItems[d].qty) + 1;
-            } else {
-                groupedItems[d] = {code:d, img:takeSnapshot(), qty:1};
-            }
+            if(groupedItems[d]){ groupedItems[d].qty = parseInt(groupedItems[d].qty) + 1; }
+            else { groupedItems[d] = {code:d, img:takeSnapshot(), qty:1}; }
             let data = JSON.parse(localStorage.getItem('productData')||'{}');
-            if (mode === 'SELL') {
-                if(data[d]){
-                    data[d].stock.val = parseInt(data[d].stock.val || 0) - 1;
-                    localStorage.setItem('productData', JSON.stringify(data));
-                }
-            } else if (mode === 'BUY') {
-                if(data[d]){
-                    data[d].stock.val = parseInt(data[d].stock.val || 0) + 1;
-                    localStorage.setItem('productData', JSON.stringify(data));
-                }
-            }
-            refreshList();
-            calculateTotal();
-            syncToServer("update");
-            
+            if (mode === 'SELL') { if(data[d]){ data[d].stock.val = parseInt(data[d].stock.val || 0) - 1; localStorage.setItem('productData', JSON.stringify(data)); } }
+            else if (mode === 'BUY') { if(data[d]){ data[d].stock.val = parseInt(data[d].stock.val || 0) + 1; localStorage.setItem('productData', JSON.stringify(data)); } }
+            refreshList(); calculateTotal(); syncToServer("update");
             setTimeout(() => {
                 const listItems = document.getElementById("itemList").getElementsByClassName("item-row");
                 for (let item of listItems) {
@@ -266,44 +115,14 @@
                     }
                 }
             }, 100);
-
-            html5QrcodeScanner.pause();
-            showStatus("✅ "+mode+" สำเร็จ!");
-            setTimeout(()=>{if(isScanning)html5QrcodeScanner.resume()},1500)
+            html5QrcodeScanner.pause(); showStatus("✅ "+mode+" สำเร็จ!"); setTimeout(()=>{if(isScanning)html5QrcodeScanner.resume()},1500)
         }
-
-        function takeSnapshot(){
-            const v=document.getElementsByTagName('video')[0],c=document.createElement('canvas');
-            if(v&&v.videoWidth>0){c.width=500;c.height=500;c.getContext('2d').drawImage(v,0,0,500,500);return c.toDataURL('image/jpeg',0.5)}
-            return ""
-        }
-        
-        function finishSale(){
-            if(Object.keys(groupedItems).length===0)return showStatus("ยังไม่มีสินค้า!");
-            syncToServer("finish");
-            showStatus("✅ สำเร็จ!");
-            groupedItems={};
-            refreshList();
-            calculateTotal();
-        }
-        
+        function takeSnapshot(){ const v=document.getElementsByTagName('video')[0],c=document.createElement('canvas'); if(v&&v.videoWidth>0){c.width=500;c.height=500;c.getContext('2d').drawImage(v,0,0,500,500);return c.toDataURL('image/jpeg',0.5)} return "" }
+        function finishSale(){ if(Object.keys(groupedItems).length===0)return showStatus("ยังไม่มีสินค้า!"); syncToServer("finish"); showStatus("✅ สำเร็จ!"); groupedItems={}; refreshList(); calculateTotal(); }
         window.onload=()=>{
-            const n=new Date();
-            const fileName = `${String(n.getDate()).padStart(2,'0')}-${String(n.getMonth()+1).padStart(2,'0')}-${n.getFullYear()+543}.txt`;
-            const buyOpt = document.getElementById('buyOption');
-            const sellOpt = document.getElementById('sellOption');
-            buyOpt.value = fileName; buyOpt.text = "Buy " + fileName;
-            sellOpt.value = fileName; sellOpt.text = "Sell " + fileName;
-
-            let m=localStorage.getItem('zenMode') || 'SELL';
-            document.getElementById('modeSelect').value = m;
-            applyModeColor(m);
+            let m=localStorage.getItem('zenMode') || 'SELL'; document.getElementById('modeSelect').value = m; applyModeColor(m);
             html5QrcodeScanner=new Html5QrcodeScanner("reader",{fps:10,qrbox:{width:200,height:60},facingMode:"environment",formatsToSupport:[Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.QR_CODE]});
-            html5QrcodeScanner.render(onScanSuccess);
-            resetIdleTimer();
-            document.addEventListener('mousemove',resetIdleTimer);
-            document.addEventListener('touchstart',resetIdleTimer);
-            document.addEventListener('click',resetIdleTimer)
+            html5QrcodeScanner.render(onScanSuccess); resetIdleTimer(); document.addEventListener('mousemove',resetIdleTimer); document.addEventListener('touchstart',resetIdleTimer); document.addEventListener('click',resetIdleTimer)
         };
     </script>
 </body>
