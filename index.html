@@ -25,7 +25,6 @@
         <div style="display:flex;gap:3px"><button class="btn-cancel" onclick="cancelBasket()">ยกเลิก</button><button id="btnFinish" class="btn-finish" onclick="finishSale()">ชำระเงิน</button></div>
     </div>
     <script>
-        // (ส่วน Script เดิมของศิษย์พี่)
         const SERVER_IP='192.168.1.200';
         let groupedItems={},html5QrcodeScanner,idleTimer,isScanning=true;
 
@@ -48,12 +47,42 @@
         }, 1000);
         function showStatus(m){const s=document.getElementById("statusMessage");s.innerText=m;setTimeout(()=>{s.innerText=""},3000)}
         function syncToServer(actionType = "update") {
+            let mode = localStorage.getItem('zenMode') || 'SELL';
             let pData = JSON.parse(localStorage.getItem('productData') || '{}');
             let itemsToSync = Object.values(groupedItems).map(i => {
                 let d = pData[i.code] || { price: { val: 0 }, cost: { val: 0 }, stock: { val: 0 }, supplier: { val: '' } };
                 return { code: i.code, qty: i.qty, img: i.img, price: d.price.val, cost: d.cost.val, stock: d.stock.val, supplier: d.supplier.val };
             });
-            fetch(`http://${SERVER_IP}:5000/`,{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ action: actionType, items: itemsToSync }) }).catch(()=>showStatus("⚠️ ออฟไลน์"));
+
+            if (mode === 'BUY' && actionType === 'finish') {
+                let summary = "✅ สรุปตะกร้าสินค้า:\n";
+                let grandTotal = 0;
+                
+                Object.values(groupedItems).forEach(i => {
+                    let d = pData[i.code] || { price: { val: 0 }, cost: { val: 0 }, stock: { val: 0 }, supplier: { val: '' } };
+                    grandTotal += (parseFloat(d.cost.val) * i.qty) || 0;
+                    summary += `รหัส: ${i.code} | จำนวน: ${i.qty} | ราคา: ${d.price.val} | ทุน: ${d.cost.val} | สต็อก: ${d.stock.val} | ร้าน: ${d.supplier.val}\n`;
+                });
+
+                let finalMsg = summary + "-----------------------------\n" +
+                               "ยอดซื้อบิลนี้: " + grandTotal.toFixed(2) + " บาท";
+
+                const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzFa72dp2mwYwMPtW2C8KsNZQdlQsdsb24G41eknafhy--XymQMD_Up6-NCtF6l1dMP/exec";
+                
+                fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: finalMsg + "\n\n" })
+                }).then(() => showStatus("💾 บันทึกลง Drive สำเร็จ!"));
+            } 
+            else {
+                fetch(`http://${SERVER_IP}:5000/`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: actionType, items: itemsToSync })
+                }).catch(() => showStatus("⚠️ ร้านออฟไลน์"));
+            }
         }
         function removeItem(code){ delete groupedItems[code]; refreshList(); calculateTotal(); syncToServer("update"); }
         function autoScrollToBottom(){ const list = document.getElementById("itemList"); list.scrollTop = list.scrollHeight; }
@@ -118,7 +147,7 @@
             html5QrcodeScanner.pause(); showStatus("✅ "+mode+" สำเร็จ!"); setTimeout(()=>{if(isScanning)html5QrcodeScanner.resume()},1500)
         }
         function takeSnapshot(){ const v=document.getElementsByTagName('video')[0],c=document.createElement('canvas'); if(v&&v.videoWidth>0){c.width=500;c.height=500;c.getContext('2d').drawImage(v,0,0,500,500);return c.toDataURL('image/jpeg',0.5)} return "" }
-        function finishSale(){ if(Object.keys(groupedItems).length===0)return showStatus("ยังไม่มีสินค้า!"); syncToServer("finish"); showStatus("✅ สำเร็จ!"); groupedItems={}; refreshList(); calculateTotal(); }
+        function finishSale(){ if(Object.keys(groupedItems).length===0) return showStatus("ยังไม่มีสินค้า!"); let m = localStorage.getItem('zenMode') || 'SELL'; syncToServer("finish"); if(m === 'BUY') fetch(`http://${SERVER_IP}:5000/`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:"CLEAR_SCREEN"})}); showStatus("✅ สำเร็จ!"); groupedItems={}; refreshList(); calculateTotal(); }
         window.onload=()=>{
             let m=localStorage.getItem('zenMode') || 'SELL'; document.getElementById('modeSelect').value = m; applyModeColor(m);
             html5QrcodeScanner=new Html5QrcodeScanner("reader",{fps:10,qrbox:{width:200,height:60},facingMode:"environment",formatsToSupport:[Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.QR_CODE]});
