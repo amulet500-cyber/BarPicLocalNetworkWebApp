@@ -22,11 +22,16 @@
         <div class="cart-header"><span>รูป</span><span>บาร์โค้ด</span><span>จำนวน</span><span>ราคา</span><span>ทุน</span><span>สต็อก</span><span>ร้าน</span><span>ลบ</span></div>
         <ul id="itemList"></ul>
         <div id="statusMessage"></div>
-        <div style="display:flex;gap:3px"><button class="btn-cancel" onclick="cancelBasket()">ยกเลิก</button><button id="btnFinish" class="btn-finish" onclick="finishSale()">ชำระเงิน</button></div>
+        <div style="display:flex;gap:3px">
+            <button class="btn-cancel" onclick="cancelBasket()">ยกเลิก</button>
+            <button id="btnFinish" class="btn-finish" onclick="finishSale()">ชำระเงิน</button>
+        </div>
     </div>
     <script>
-        const SERVER_IP='192.168.1.200';
-        let groupedItems={},html5QrcodeScanner,idleTimer,isScanning=true;
+        // 🌟🌟🌟 ลิงก์ Web App อันล่าสุดของศิษย์พี่ (ศิษย์น้องดึงจากรูปมาใส่ให้แล้ว ถ้าผิดแก้ได้เลยครับ) 🌟🌟🌟
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycg8de6efutKRLsoT8s6AQh3eJaEGmSOUV4kP4jhO9iUMimOzT3tbtcQcJaZArsyzb/exec";
+        
+        let groupedItems={}, html5QrcodeScanner, idleTimer, isScanning=true;
 
         function applyModeColor(mode){
             const header = document.getElementById('headerBar');
@@ -35,59 +40,63 @@
             header.style.backgroundColor = colors[mode] || '#27ae60';
             btn.style.backgroundColor = colors[mode] || '#27ae60';
         }
-        function changeMode(m){localStorage.setItem('zenMode',m);applyModeColor(m);showStatus("โหมด: "+m);calculateTotal();refreshList()}
-        function resetIdleTimer(){clearTimeout(idleTimer);idleTimer=setTimeout(sleepScanner,300000)}
+
+        function changeMode(m){
+            localStorage.setItem('zenMode',m);
+            applyModeColor(m);
+            showStatus("โหมด: "+m);
+            calculateTotal();
+            refreshList();
+        }
+
+        function resetIdleTimer(){clearTimeout(idleTimer); idleTimer=setTimeout(sleepScanner,300000)}
         function sleepScanner(){if(isScanning){html5QrcodeScanner.clear().then(()=>{isScanning=false;document.getElementById('sleepOverlay').style.display='flex';showStatus("💤 พักสแกนเนอร์")})}}
         function wakeScanner(){if(!isScanning){isScanning=true;document.getElementById('sleepOverlay').style.display='none';showStatus("📷 พร้อมสแกน");html5QrcodeScanner.render(onScanSuccess);resetIdleTimer()}}
+        
         setInterval(()=>{
             const n=new Date();
             const dateStr = n.toLocaleDateString('th-TH',{weekday:'short', day:'numeric', month:'short', year:'numeric'});
             const timeStr = n.toLocaleTimeString('th-TH',{hour:'2-digit', minute:'2-digit', second:'2-digit'});
             document.getElementById('clock').innerText = dateStr + ' ' + timeStr;
         }, 1000);
+
         function showStatus(m){const s=document.getElementById("statusMessage");s.innerText=m;setTimeout(()=>{s.innerText=""},3000)}
-        function syncToServer(actionType = "update") {
-            let mode = localStorage.getItem('zenMode') || 'SELL';
-            let pData = JSON.parse(localStorage.getItem('productData') || '{}');
-            let itemsToSync = Object.values(groupedItems).map(i => {
-                let d = pData[i.code] || { price: { val: 0 }, cost: { val: 0 }, stock: { val: 0 }, supplier: { val: '' } };
-                return { code: i.code, qty: i.qty, img: i.img, price: d.price.val, cost: d.cost.val, stock: d.stock.val, supplier: d.supplier.val };
-            });
-
-            if (mode === 'BUY' && actionType === 'finish') {
-                let summary = "✅ สรุปตะกร้าสินค้า:\n";
-                let grandTotal = 0;
+        
+        // 🌟 โหลดข้อมูลตรงจากชีต พร้อมระบบป้องกันแคช
+        async function loadSheetData() {
+            showStatus("กำลังซิงค์ข้อมูลล่าสุดจากชีต...");
+            try {
+                // ใส่ตัวทำลายแคชเพื่อบังคับโหลดข้อมูลสดจากชีต
+                const cacheBusterUrl = GOOGLE_SCRIPT_URL + (GOOGLE_SCRIPT_URL.includes('?') ? '&' : '?') + '_=' + new Date().getTime();
                 
-                Object.values(groupedItems).forEach(i => {
-                    let d = pData[i.code] || { price: { val: 0 }, cost: { val: 0 }, stock: { val: 0 }, supplier: { val: '' } };
-                    grandTotal += (parseFloat(d.cost.val) * i.qty) || 0;
-                    summary += `รหัส: ${i.code} | จำนวน: ${i.qty} | ราคา: ${d.price.val} | ทุน: ${d.cost.val} | สต็อก: ${d.stock.val} | ร้าน: ${d.supplier.val}\n`;
-                });
-
-                let finalMsg = summary + "-----------------------------\n" +
-                               "ยอดซื้อบิลนี้: " + grandTotal.toFixed(2) + " บาท";
-
-                const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzFa72dp2mwYwMPtW2C8KsNZQdlQsdsb24G41eknafhy--XymQMD_Up6-NCtF6l1dMP/exec";
+                let response = await fetch(cacheBusterUrl);
+                let data = await response.json();
                 
-                fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ content: finalMsg + "\n\n" })
-                }).then(() => showStatus("💾 บันทึกลง Drive สำเร็จ!"));
-            } 
-            else {
-                fetch(`http://${SERVER_IP}:5000/`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: actionType, items: itemsToSync })
-                }).catch(() => showStatus("⚠️ ร้านออฟไลน์"));
+                let formattedData = {};
+                for (const [code, info] of Object.entries(data)) {
+                    formattedData[code] = {
+                        price: { val: info.price },
+                        cost: { val: info.cost },
+                        stock: { val: info.stock },
+                        supplier: { val: info.supplier }
+                    };
+                }
+                localStorage.setItem('productData', JSON.stringify(formattedData));
+                
+                refreshList();
+                calculateTotal();
+                showStatus("✅ ซิงค์สต็อกตรงกับชีตแล้ว!");
+            } catch (error) {
+                console.error("Error loading sheet data:", error);
+                showStatus("⚠️ ซิงค์ล้มเหลว กำลังใช้ข้อมูลล่าสุดในเครื่อง");
             }
         }
-        function removeItem(code){ delete groupedItems[code]; refreshList(); calculateTotal(); syncToServer("update"); }
+
+        function removeItem(code){ delete groupedItems[code]; refreshList(); calculateTotal(); }
         function autoScrollToBottom(){ const list = document.getElementById("itemList"); list.scrollTop = list.scrollHeight; }
         function refreshList(){ const i=document.getElementById("itemList"); i.innerHTML=""; Object.values(groupedItems).forEach(x=>renderItem(x)); autoScrollToBottom(); }
-        function cancelBasket(){ if(confirm("ยกเลิกทั้งตะกร้าใช่ไหม?")){ groupedItems={}; refreshList(); calculateTotal(); syncToServer("update"); } }
+        function cancelBasket(){ if(confirm("ยกเลิกทั้งตะกร้าใช่ไหม?")){ groupedItems={}; refreshList(); calculateTotal(); } }
+        
         function calculateTotal(){
             let t=0, d=JSON.parse(localStorage.getItem('productData')||'{}');
             let mode = localStorage.getItem('zenMode') || 'SELL';
@@ -101,38 +110,48 @@
             else if(mode === 'BUY'){ btn.innerText = "(" + count + ") จ่ายเงิน " + t + " บาท"; }
             else { btn.innerText = "(" + count + ") ชำระเงิน " + t + " บาท"; }
         }
+
         function updateCellData(c,f,v){
             let a=JSON.parse(localStorage.getItem('productData')||'{}');
-            if(!a[c])a[c]={price:{val:0,ts:''},cost:{val:0,ts:''},stock:{val:0,ts:''},supplier:{val:'',ts:''}};
-            a[c][f]={val:v,ts:new Date().toISOString()};
+            if(!a[c])a[c]={price:{val:0},cost:{val:0},stock:{val:0},supplier:{val:''}};
+            a[c][f]={val:v};
             localStorage.setItem('productData',JSON.stringify(a));
-            if(f==='price'||f==='cost')calculateTotal()
+            if(f==='price'||f==='cost') calculateTotal();
         }
+
         function getCellData(c,f,d){ let a=JSON.parse(localStorage.getItem('productData')||'{}'); return(a[c]&&a[c][f])?a[c][f].val:d }
+        
         function renderItem(i){
             let l=document.createElement("li");l.className="item-row";
             let p=getCellData(i.code,'price',0), c=getCellData(i.code,'cost',0), s=getCellData(i.code,'stock',0), st=(parseFloat(c)>0)?"cost-filled":"cost-empty";
             let mode = localStorage.getItem('zenMode') || 'SELL';
             let costClass = (mode === 'SELL') ? 'hidden-cost' : 'visible-cost';
+            
             l.innerHTML=`<img src="${i.img}"><span class="barcode-text">${i.code}</span>
-            <input type="number" class="item-input" value="${i.qty}" onfocus="this.select()" onchange="groupedItems['${i.code}'].qty=this.value;calculateTotal();syncToServer('update')">
+            <input type="number" class="item-input" value="${i.qty}" onfocus="this.select()" onchange="groupedItems['${i.code}'].qty=this.value;calculateTotal();">
             <input type="number" class="item-input" value="${p}" onfocus="this.select()" onchange="updateCellData('${i.code}','price',this.value);calculateTotal()">
             <input type="number" class="item-input cost-input ${costClass} ${st}" value="${c}" onfocus="this.select()" onclick="toggleCostVisibility(this)" onchange="updateCellData('${i.code}','cost',this.value);calculateTotal()">
             <input type="number" class="item-input" value="${s}" onfocus="this.select()" onchange="updateCellData('${i.code}','stock',this.value)">
-            <input type="text" class="item-input" maxlength="1" value="${getCellData(i.code,'supplier','').substring(0,1)}" onfocus="this.select()" onchange="updateCellData('${i.code}','supplier',this.value)">
+            <input type="text" class="item-input" maxlength="1" value="${getCellData(i.code,'supplier','').toString().substring(0,1)}" onfocus="this.select()" onchange="updateCellData('${i.code}','supplier',this.value)">
             <button class="btn-delete" onclick="removeItem('${i.code}')">X</button>`;
             document.getElementById("itemList").appendChild(l);
         }
+
         function toggleCostVisibility(el){el.classList.toggle('hidden-cost');el.classList.toggle('visible-cost')}
+        
         async function onScanSuccess(d){
             new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
             let mode = localStorage.getItem('zenMode') || 'SELL';
-            if(groupedItems[d]){ groupedItems[d].qty = parseInt(groupedItems[d].qty) + 1; }
-            else { groupedItems[d] = {code:d, img:takeSnapshot(), qty:1}; }
-            let data = JSON.parse(localStorage.getItem('productData')||'{}');
-            if (mode === 'SELL') { if(data[d]){ data[d].stock.val = parseInt(data[d].stock.val || 0) - 1; localStorage.setItem('productData', JSON.stringify(data)); } }
-            else if (mode === 'BUY') { if(data[d]){ data[d].stock.val = parseInt(data[d].stock.val || 0) + 1; localStorage.setItem('productData', JSON.stringify(data)); } }
-            refreshList(); calculateTotal(); syncToServer("update");
+            
+            if(groupedItems[d]){ 
+                groupedItems[d].qty = parseInt(groupedItems[d].qty) + 1; 
+            } else { 
+                groupedItems[d] = {code:d, img:takeSnapshot(), qty:1}; 
+            }
+            
+            refreshList(); 
+            calculateTotal(); 
+
             setTimeout(() => {
                 const listItems = document.getElementById("itemList").getElementsByClassName("item-row");
                 for (let item of listItems) {
@@ -144,14 +163,77 @@
                     }
                 }
             }, 100);
-            html5QrcodeScanner.pause(); showStatus("✅ "+mode+" สำเร็จ!"); setTimeout(()=>{if(isScanning)html5QrcodeScanner.resume()},1500)
+            
+            html5QrcodeScanner.pause(); 
+            showStatus("✅ เพิ่มลงตะกร้าแล้ว"); 
+            setTimeout(()=>{if(isScanning)html5QrcodeScanner.resume()},1500);
         }
+
         function takeSnapshot(){ const v=document.getElementsByTagName('video')[0],c=document.createElement('canvas'); if(v&&v.videoWidth>0){c.width=500;c.height=500;c.getContext('2d').drawImage(v,0,0,500,500);return c.toDataURL('image/jpeg',0.5)} return "" }
-        function finishSale(){ if(Object.keys(groupedItems).length===0) return showStatus("ยังไม่มีสินค้า!"); let m = localStorage.getItem('zenMode') || 'SELL'; syncToServer("finish"); if(m === 'BUY') fetch(`http://${SERVER_IP}:5000/`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({action:"CLEAR_SCREEN"})}); showStatus("✅ สำเร็จ!"); groupedItems={}; refreshList(); calculateTotal(); }
-        window.onload=()=>{
-            let m=localStorage.getItem('zenMode') || 'SELL'; document.getElementById('modeSelect').value = m; applyModeColor(m);
-            html5QrcodeScanner=new Html5QrcodeScanner("reader",{fps:10,qrbox:{width:200,height:60},facingMode:"environment",formatsToSupport:[Html5QrcodeSupportedFormats.EAN_13,Html5QrcodeSupportedFormats.EAN_8,Html5QrcodeSupportedFormats.CODE_128,Html5QrcodeSupportedFormats.QR_CODE]});
-            html5QrcodeScanner.render(onScanSuccess); resetIdleTimer(); document.addEventListener('mousemove',resetIdleTimer); document.addEventListener('touchstart',resetIdleTimer); document.addEventListener('click',resetIdleTimer)
+        
+        // 🌟 ส่งข้อมูลรวดเดียวตอนกดปุ่มชำระเงิน
+        function finishSale(){ 
+            if(Object.keys(groupedItems).length===0) return showStatus("ยังไม่มีสินค้า!"); 
+            
+            showStatus("กำลังอัปเดตสต็อกลงชีต...");
+            let mode = localStorage.getItem('zenMode') || 'SELL';
+            
+            let itemsToSync = Object.values(groupedItems).map(i => {
+                return { 
+                    code: i.code, 
+                    qty: i.qty, 
+                    price: getCellData(i.code, 'price', 0), 
+                    cost: getCellData(i.code, 'cost', 0), 
+                    supplier: getCellData(i.code, 'supplier', '') 
+                };
+            });
+
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors', 
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8'
+                },
+                body: JSON.stringify({ mode: mode, items: itemsToSync })
+            }).then(() => {
+                  showStatus("✅ บันทึกสต็อกเรียบร้อย!");
+                  groupedItems={}; 
+                  refreshList(); 
+                  calculateTotal();
+                  
+                  // หน่วงเวลาให้ Google Sheet ประมวลผลเสร็จแล้วดึงข้อมูลใหม่มาโชว์
+                  setTimeout(() => {
+                      loadSheetData(); 
+                  }, 1500);
+                  
+            }).catch((err) => {
+                  console.error(err);
+                  showStatus("⚠️ ระบบเครือข่ายมีปัญหา");
+            });
+        }
+
+window.onload = async () => {
+            let m = localStorage.getItem('zenMode') || 'SELL'; 
+            document.getElementById('modeSelect').value = m; 
+            applyModeColor(m);
+            
+            // 🛠️ แก้ไข: ให้หน้าจอรอจนกว่าจะโหลดข้อมูลจากชีตเสร็จก่อน ถึงค่อยแสดงผล
+            showStatus("กำลังดึงข้อมูลสดจากชีต...");
+            await loadSheetData(); 
+            
+            // หลังจากโหลดเสร็จค่อยสั่งแสดงผลและเริ่มสแกน
+            html5QrcodeScanner = new Html5QrcodeScanner("reader", {
+                fps: 10,
+                qrbox: {width: 200, height: 60},
+                facingMode: "environment",
+                formatsToSupport: [Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.QR_CODE]
+            });
+            html5QrcodeScanner.render(onScanSuccess); 
+            resetIdleTimer(); 
+            
+            document.addEventListener('mousemove', resetIdleTimer); 
+            document.addEventListener('touchstart', resetIdleTimer); 
+            document.addEventListener('click', resetIdleTimer);
         };
     </script>
 </body>
