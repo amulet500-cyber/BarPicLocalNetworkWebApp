@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>สแกนสินค้า ศิษย์พี่ Zen - Sync & AutoScroll</title>
+    <title>สแกนสินค้า ศิษย์พี่ Zen - Sync GoogleSheet & PC Mother</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="style.css">
@@ -28,9 +28,10 @@
         </div>
     </div>
     <script>
-        // 🌟🌟🌟 ลิงก์ Web App อันล่าสุดของศิษย์พี่ (ศิษย์น้องดึงจากรูปมาใส่ให้แล้ว ถ้าผิดแก้ได้เลยครับ) 🌟🌟🌟
+        // 🌟 ตั้งค่าลิงก์ URL ปลายทางของศิษย์พี่ Zen
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycg8de6efutKRLsoT8s6AQh3eJaEGmSOUV4kP4jhO9iUMimOzT3tbtcQcJaZArsyzb/exec";
-        
+        const SERVER_IP = '192.168.1.200';
+
         let groupedItems={}, html5QrcodeScanner, idleTimer, isScanning=true;
 
         function applyModeColor(mode){
@@ -62,13 +63,11 @@
 
         function showStatus(m){const s=document.getElementById("statusMessage");s.innerText=m;setTimeout(()=>{s.innerText=""},3000)}
         
-        // 🌟 โหลดข้อมูลตรงจากชีต พร้อมระบบป้องกันแคช
+        // ฟังก์ชันดึงสต็อกข้อมูลสดจาก Google Sheet มาบันทึกลงในเครื่องมือถือ
         async function loadSheetData() {
             showStatus("กำลังซิงค์ข้อมูลล่าสุดจากชีต...");
             try {
-                // ใส่ตัวทำลายแคชเพื่อบังคับโหลดข้อมูลสดจากชีต
                 const cacheBusterUrl = GOOGLE_SCRIPT_URL + (GOOGLE_SCRIPT_URL.includes('?') ? '&' : '?') + '_=' + new Date().getTime();
-                
                 let response = await fetch(cacheBusterUrl);
                 let data = await response.json();
                 
@@ -92,10 +91,35 @@
             }
         }
 
-        function removeItem(code){ delete groupedItems[code]; refreshList(); calculateTotal(); }
+        function syncToPCServer(actionType = "update") {
+            let mode = localStorage.getItem('zenMode') || 'SELL';
+            let pData = JSON.parse(localStorage.getItem('productData') || '{}');
+            
+            let itemsToSync = Object.values(groupedItems).map(i => {
+                let d = pData[i.code] || { price: { val: 0 }, cost: { val: 0 }, stock: { val: 0 }, supplier: { val: '' } };
+                return { 
+                    code: i.code, 
+                    qty: i.qty, 
+                    img: i.img, 
+                    price: d.price.val, 
+                    cost: d.cost.val, 
+                    stock: d.stock.val, 
+                    supplier: d.supplier.val 
+                };
+            });
+
+            // ส่งข้อมูลไปวาดและแสดงผลบนโปรแกรมเครื่องแม่ PC 💻
+            fetch(`http://${SERVER_IP}:5000/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: actionType, mode: mode, items: itemsToSync })
+            }).catch(() => console.log("PC Mother Offline"));
+        }
+
+        function removeItem(code){ delete groupedItems[code]; refreshList(); calculateTotal(); syncToPCServer("update"); }
         function autoScrollToBottom(){ const list = document.getElementById("itemList"); list.scrollTop = list.scrollHeight; }
         function refreshList(){ const i=document.getElementById("itemList"); i.innerHTML=""; Object.values(groupedItems).forEach(x=>renderItem(x)); autoScrollToBottom(); }
-        function cancelBasket(){ if(confirm("ยกเลิกทั้งตะกร้าใช่ไหม?")){ groupedItems={}; refreshList(); calculateTotal(); } }
+        function cancelBasket(){ if(confirm("ยกเลิกทั้งตะกร้าใช่ไหม?")){ groupedItems={}; refreshList(); calculateTotal(); syncToPCServer("update"); } }
         
         function calculateTotal(){
             let t=0, d=JSON.parse(localStorage.getItem('productData')||'{}');
@@ -128,7 +152,7 @@
             let costClass = (mode === 'SELL') ? 'hidden-cost' : 'visible-cost';
             
             l.innerHTML=`<img src="${i.img}"><span class="barcode-text">${i.code}</span>
-            <input type="number" class="item-input" value="${i.qty}" onfocus="this.select()" onchange="groupedItems['${i.code}'].qty=this.value;calculateTotal();">
+            <input type="number" class="item-input" value="${i.qty}" onfocus="this.select()" onchange="groupedItems['${i.code}'].qty=this.value;calculateTotal();syncToPCServer('update')">
             <input type="number" class="item-input" value="${p}" onfocus="this.select()" onchange="updateCellData('${i.code}','price',this.value);calculateTotal()">
             <input type="number" class="item-input cost-input ${costClass} ${st}" value="${c}" onfocus="this.select()" onclick="toggleCostVisibility(this)" onchange="updateCellData('${i.code}','cost',this.value);calculateTotal()">
             <input type="number" class="item-input" value="${s}" onfocus="this.select()" onchange="updateCellData('${i.code}','stock',this.value)">
@@ -149,8 +173,14 @@
                 groupedItems[d] = {code:d, img:takeSnapshot(), qty:1}; 
             }
             
+            // อัปเดตข้อมูลแบบจำลองบนมือถือ เพื่อส่งไปแสดงผลที่พีซีต่อ
+            let data = JSON.parse(localStorage.getItem('productData')||'{}');
+            if (mode === 'SELL') { if(data[d]){ data[d].stock.val = parseInt(data[d].stock.val || 0) - 1; localStorage.setItem('productData', JSON.stringify(data)); } }
+            else if (mode === 'BUY') { if(data[d]){ data[d].stock.val = parseInt(data[d].stock.val || 0) + 1; localStorage.setItem('productData', JSON.stringify(data)); } }
+
             refreshList(); 
             calculateTotal(); 
+            syncToPCServer("update"); // ส่งข้อมูลอัปเดตแบบต่อเนื่องให้พีซีทันที 💻
 
             setTimeout(() => {
                 const listItems = document.getElementById("itemList").getElementsByClassName("item-row");
@@ -169,9 +199,17 @@
             setTimeout(()=>{if(isScanning)html5QrcodeScanner.resume()},1500);
         }
 
-        function takeSnapshot(){ const v=document.getElementsByTagName('video')[0],c=document.createElement('canvas'); if(v&&v.videoWidth>0){c.width=500;c.height=500;c.getContext('2d').drawImage(v,0,0,500,500);return c.toDataURL('image/jpeg',0.5)} return "" }
+        function takeSnapshot(){ 
+            const v=document.getElementsByTagName('video')[0], c=document.createElement('canvas'); 
+            if(v && v.videoWidth > 0){
+                c.width=300; c.height=300; // บีบความคมชัดให้เหมาะสม ไม่หน่วงเน็ตและไม่ทำลายตาราง PC
+                c.getContext('2d').drawImage(v,0,0,300,300);
+                return c.toDataURL('image/jpeg',0.5)
+            } 
+            return "" 
+        }
         
-        // 🌟 ส่งข้อมูลรวดเดียวตอนกดปุ่มชำระเงิน
+        // เมื่อกดปุ่มชำระเงิน จะทำการเซฟผลลงทั้งกูเกิลชีตและเครื่องพีซีแม่
         function finishSale(){ 
             if(Object.keys(groupedItems).length===0) return showStatus("ยังไม่มีสินค้า!"); 
             
@@ -184,16 +222,18 @@
                     qty: i.qty, 
                     price: getCellData(i.code, 'price', 0), 
                     cost: getCellData(i.code, 'cost', 0), 
-                    supplier: getCellData(i.code, 'supplier', '') 
+                    supplier: getCellData(i.code, 'supplier', '')
                 };
             });
 
+            // 1. สั่งปิดบิลไปที่เครื่องพีซีแม่ 💻
+            syncToPCServer("finish");
+
+            // 2. สั่งปิดบิลอัปเดตสต็อกไปที่กูเกิลชีต 📊
             fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST',
                 mode: 'no-cors', 
-                headers: {
-                    'Content-Type': 'text/plain;charset=utf-8'
-                },
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify({ mode: mode, items: itemsToSync })
             }).then(() => {
                   showStatus("✅ บันทึกสต็อกเรียบร้อย!");
@@ -201,27 +241,23 @@
                   refreshList(); 
                   calculateTotal();
                   
-                  // หน่วงเวลาให้ Google Sheet ประมวลผลเสร็จแล้วดึงข้อมูลใหม่มาโชว์
-                  setTimeout(() => {
-                      loadSheetData(); 
-                  }, 1500);
+                  // ดึงค่าสต็อกอัปเดตสดจากกูเกิลกลับมาโชว์ในเครื่องให้แม่นยำ
+                  setTimeout(() => { loadSheetData(); }, 1500);
                   
             }).catch((err) => {
                   console.error(err);
-                  showStatus("⚠️ ระบบเครือข่ายมีปัญหา");
+                  showStatus("⚠️ ระบบเชื่อมต่อชีตมีปัญหา");
             });
         }
 
-window.onload = async () => {
+        window.onload = async () => {
             let m = localStorage.getItem('zenMode') || 'SELL'; 
             document.getElementById('modeSelect').value = m; 
             applyModeColor(m);
             
-            // 🛠️ แก้ไข: ให้หน้าจอรอจนกว่าจะโหลดข้อมูลจากชีตเสร็จก่อน ถึงค่อยแสดงผล
-            showStatus("กำลังดึงข้อมูลสดจากชีต...");
+            // ดึงค่าปัจจุบันจากชีตก่อนเริ่มเปิดกล้อง
             await loadSheetData(); 
             
-            // หลังจากโหลดเสร็จค่อยสั่งแสดงผลและเริ่มสแกน
             html5QrcodeScanner = new Html5QrcodeScanner("reader", {
                 fps: 10,
                 qrbox: {width: 200, height: 60},
