@@ -89,7 +89,6 @@
             }
         }
 
-        // ฟังก์ชันอัปเดตจำนวนและสต็อกบนหน้าจอพร้อมกัน
         function changeQty(code, newValue) {
             let newQty = parseInt(newValue) || 0;
             if (newQty < 0) newQty = 0;
@@ -111,7 +110,6 @@
             refreshList();
         }
 
-        // คืนค่าสต็อกก่อนลบสินค้าออกจากตะกร้า
         function removeItem(code){ 
             let data = JSON.parse(localStorage.getItem('productData')||'{}');
             let mode = localStorage.getItem('zenMode') || 'SELL';
@@ -132,7 +130,6 @@
         
         function cancelBasket(){ 
             if(confirm("ยกเลิกทั้งตะกร้าใช่ไหม?")){ 
-                // คืนค่าสต็อกทุกรายการก่อนล้างตะกร้า
                 let data = JSON.parse(localStorage.getItem('productData')||'{}');
                 let mode = localStorage.getItem('zenMode') || 'SELL';
                 Object.values(groupedItems).forEach(item => {
@@ -225,19 +222,53 @@
         function takeSnapshot(){ 
             const v=document.getElementsByTagName('video')[0], c=document.createElement('canvas'); 
             if(v && v.videoWidth > 0){
-                c.width=300; c.height=300; 
-                c.getContext('2d').drawImage(v,0,0,300,300);
+                c.width=100; c.height=100; 
+                c.getContext('2d').drawImage(v,0,0,100,100);
                 return c.toDataURL('image/jpeg',0.5)
             } 
             return "" 
         }
+
+        // --- ปรับปรุงให้รับค่าเป็น Array โดยตรงและจัดเรียง 4 คอลัมน์ ---
+        async function createCollage(items) {
+            if (items.length === 0) return ""; 
+
+            const THUMB_SIZE = 100;
+            let cols = 4; // ฟิกซ์ 4 คอลัมน์ (4x4 = 16 รูปพอดี)
+            let rows = Math.ceil(items.length / cols);
+
+            let canvas = document.createElement('canvas');
+            canvas.width = cols * THUMB_SIZE;
+            canvas.height = rows * THUMB_SIZE;
+            let ctx = canvas.getContext('2d');
         
-        function finishSale(){ 
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const loadImage = (src) => new Promise((resolve) => {
+                let img = new Image();
+                img.onload = () => resolve(img);
+                img.src = src;
+            });
+
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].img) {
+                    let img = await loadImage(items[i].img);
+                    let x = (i % cols) * THUMB_SIZE;
+                    let y = Math.floor(i / cols) * THUMB_SIZE;
+                    ctx.drawImage(img, x, y, THUMB_SIZE, THUMB_SIZE);
+                }
+            }
+            return canvas.toDataURL('image/jpeg', 0.6); 
+        }
+        
+        async function finishSale(){ 
             if(Object.keys(groupedItems).length===0) return showStatus("ยังไม่มีสินค้า!"); 
-            showStatus("กำลังแจ้งเตือน & อัปเดตชีต...");
+            showStatus("กำลังสร้างภาพและอัปเดตชีต...");
             let mode = localStorage.getItem('zenMode') || 'SELL';
             
-            let itemsToSync = Object.values(groupedItems).map(i => {
+            let allItems = Object.values(groupedItems);
+            let itemsToSync = allItems.map(i => {
                 return { 
                     code: i.code, 
                     qty: i.qty, 
@@ -248,22 +279,31 @@
                 };
             });
 
-fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors', // แม้จะเป็น no-cors ก็ทำงานได้ ถ้าเราส่ง Header ให้ถูกต้อง
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: mode, items: itemsToSync })
-    }).then(() => {
-        showStatus("✅ ทำรายการเสร็จสิ้น!");
-        groupedItems={}; 
-        refreshList(); 
-        calculateTotal();
-        setTimeout(() => { loadSheetData(); }, 1500);
-    }).catch((err) => {
-        console.error(err);
-        showStatus("⚠️ ระบบเชื่อมต่อชีตมีปัญหา");
-    });
-}
+            // --- แบ่งรายการเป็น 2 ชุด (ชุดละ 16 รูป) ---
+            let batch1 = allItems.slice(0, 16);
+            let batch2 = allItems.slice(16, 32);
+
+            // รอสร้างรูป Collage ทั้ง 2 ใบให้เสร็จ
+            let collage1 = await createCollage(batch1);
+            let collage2 = await createCollage(batch2);
+
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors', 
+                headers: { 'Content-Type': 'application/json' },
+                // แนบรูป 2 ใบเข้าไปใน payload
+                body: JSON.stringify({ mode: mode, items: itemsToSync, collage1: collage1, collage2: collage2 })
+            }).then(() => {
+                showStatus("✅ ทำรายการเสร็จสิ้น!");
+                groupedItems={}; 
+                refreshList(); 
+                calculateTotal();
+                setTimeout(() => { loadSheetData(); }, 1500);
+            }).catch((err) => {
+                console.error(err);
+                showStatus("⚠️ ระบบเชื่อมต่อชีตมีปัญหา");
+            });
+        }
 
         window.onload = async () => {
             let m = localStorage.getItem('zenMode') || 'SELL'; 
