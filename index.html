@@ -24,12 +24,13 @@
         <div id="statusMessage"></div>
         <div style="display:flex;gap:3px">
             <button class="btn-cancel" onclick="cancelBasket()">ยกเลิก</button>
+            <button id="btnReport" class="btn-report" onclick="sendReport()" style="display:none; background-color:#8e44ad; color:#fff; border:none; border-radius:5px; flex:1; cursor:pointer; font-weight:bold;">ส่งรายงาน Telegram</button>
             <button id="btnFinish" class="btn-finish" onclick="finishSale()">ชำระเงิน</button>
         </div>
     </div>
 
     <script>
-        // 🌟 วาง URL ใหม่ของ Google Apps Script ตรงนี้
+        // 🌟 วาง URL ของ Google Apps Script ตรงนี้
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycg8de6efutKRLsoT8s6AQh3eJaEGmSOUV4kP4jhO9iUMimOzT3tbtcQcJaZArsyzb/exec";
 
         let groupedItems={}, html5QrcodeScanner, idleTimer, isScanning=true;
@@ -46,6 +47,14 @@
             localStorage.setItem('zenMode',m);
             applyModeColor(m);
             showStatus("โหมด: "+m);
+            
+            // 🌟 ซ่อน/โชว์ ปุ่มส่งรายงานตามโหมดที่เลือก
+            if (m === 'CHECK') {
+                document.getElementById('btnReport').style.display = 'block';
+            } else {
+                document.getElementById('btnReport').style.display = 'none';
+            }
+
             calculateTotal();
             refreshList();
         }
@@ -229,12 +238,11 @@
             return "" 
         }
 
-        // --- ปรับปรุงให้รับค่าเป็น Array โดยตรงและจัดเรียง 4 คอลัมน์ ---
         async function createCollage(items) {
             if (items.length === 0) return ""; 
 
             const THUMB_SIZE = 100;
-            let cols = 4; // ฟิกซ์ 4 คอลัมน์ (4x4 = 16 รูปพอดี)
+            let cols = 4;
             let rows = Math.ceil(items.length / cols);
 
             let canvas = document.createElement('canvas');
@@ -262,11 +270,25 @@
             return canvas.toDataURL('image/jpeg', 0.6); 
         }
         
+        // 🌟 ฟังก์ชันใหม่ ส่งคำสั่งไปกระตุ้นให้ Google Apps Script ส่งรายงาน Telegram
+        function sendReport() {
+            showStatus("กำลังสั่งส่งรายงาน...");
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode: 'REPORT' })
+            }).then(() => {
+                showStatus("✅ สั่งส่งรายงานเรียบร้อยแล้ว!");
+            }).catch((err) => {
+                showStatus("⚠️ เกิดข้อผิดพลาดในการส่งข้อมูล");
+                console.error(err);
+            });
+        }
+
         function finishSale() { 
-            // เปลี่ยนจาก async function เป็น function ธรรมดา เพื่อไม่ให้ปุ่มกดต้องรอ
             if(Object.keys(groupedItems).length === 0) return showStatus("ยังไม่มีสินค้าในตะกร้า!"); 
             
-            // 1. แคปเจอร์ (Snapshot) ข้อมูลปัจจุบันก่อนล้างหน้าจอ
             let mode = localStorage.getItem('zenMode') || 'SELL';
             let allItems = Object.values(groupedItems);
             let itemsToSync = allItems.map(i => {
@@ -282,21 +304,16 @@
             let batch1 = allItems.slice(0, 16);
             let batch2 = allItems.slice(16, 32);
 
-            // 2. เคลียร์หน้าจอทันที! (UI Reset)
             groupedItems = {}; 
             refreshList(); 
             calculateTotal();
             showStatus("⏳ เคลียร์หน้าจอแล้ว! (กำลังบันทึกบิลเบื้องหลัง)");
 
-            // 3. เริ่มการทำงานเบื้องหลัง (Background Process)
-            // ใช้ IIFE (Immediately Invoked Function Expression) เพื่อรันโค้ดแบบไม่บล็อกหน้าจอ
             (async () => {
                 try {
-                    // สร้างรูป Collage (ทำงานเงียบๆ ไม่กวนหน้าจอ)
                     let collage1 = await createCollage(batch1);
                     let collage2 = await createCollage(batch2);
 
-                    // ยิงข้อมูลไปที่ Google Apps Script
                     fetch(GOOGLE_SCRIPT_URL, {
                         method: 'POST',
                         mode: 'no-cors', 
@@ -304,21 +321,23 @@
                         body: JSON.stringify({ mode: mode, items: itemsToSync, collage1: collage1, collage2: collage2 })
                     }).then(() => {
                         console.log("✅ บันทึกบิลเบื้องหลังและส่ง Telegram เสร็จสิ้น!");
-                        // หมายเหตุ: เอา loadSheetData() ออก เพื่อไม่ให้ดึงข้อมูลใหม่มากวนตอนศิษย์พี่กำลังสแกนบิลถัดไป
                     }).catch((err) => {
                         console.error("⚠️ เกิดข้อผิดพลาดในการส่งข้อมูลเบื้องหลัง:", err);
-                        // หากมีระบบแจ้งเตือน สามารถใส่เสียงเตือนเล็กๆ ตรงนี้ได้ว่าเน็ตหลุด
                     });
                 } catch(err) {
                     console.error("⚠️ Error in background task:", err);
                 }
-            })(); // ปิดคำสั่งรันเบื้องหลัง
+            })(); 
         }
 
         window.onload = async () => {
             let m = localStorage.getItem('zenMode') || 'SELL'; 
             document.getElementById('modeSelect').value = m; 
             applyModeColor(m);
+            
+            // 🌟 เช็คและแสดงปุ่มตอนโหลดหน้าเว็บ
+            document.getElementById('btnReport').style.display = (m === 'CHECK') ? 'block' : 'none';
+
             await loadSheetData(); 
             
             html5QrcodeScanner = new Html5QrcodeScanner("reader", {
