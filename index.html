@@ -262,11 +262,12 @@
             return canvas.toDataURL('image/jpeg', 0.6); 
         }
         
-        async function finishSale(){ 
-            if(Object.keys(groupedItems).length===0) return showStatus("ยังไม่มีสินค้า!"); 
-            showStatus("กำลังสร้างภาพและอัปเดตชีต...");
-            let mode = localStorage.getItem('zenMode') || 'SELL';
+        function finishSale() { 
+            // เปลี่ยนจาก async function เป็น function ธรรมดา เพื่อไม่ให้ปุ่มกดต้องรอ
+            if(Object.keys(groupedItems).length === 0) return showStatus("ยังไม่มีสินค้าในตะกร้า!"); 
             
+            // 1. แคปเจอร์ (Snapshot) ข้อมูลปัจจุบันก่อนล้างหน้าจอ
+            let mode = localStorage.getItem('zenMode') || 'SELL';
             let allItems = Object.values(groupedItems);
             let itemsToSync = allItems.map(i => {
                 return { 
@@ -278,31 +279,40 @@
                     stock: getCellData(i.code, 'stock', 0)
                 };
             });
-
-            // --- แบ่งรายการเป็น 2 ชุด (ชุดละ 16 รูป) ---
             let batch1 = allItems.slice(0, 16);
             let batch2 = allItems.slice(16, 32);
 
-            // รอสร้างรูป Collage ทั้ง 2 ใบให้เสร็จ
-            let collage1 = await createCollage(batch1);
-            let collage2 = await createCollage(batch2);
+            // 2. เคลียร์หน้าจอทันที! (UI Reset)
+            groupedItems = {}; 
+            refreshList(); 
+            calculateTotal();
+            showStatus("⏳ เคลียร์หน้าจอแล้ว! (กำลังบันทึกบิลเบื้องหลัง)");
 
-            fetch(GOOGLE_SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors', 
-                headers: { 'Content-Type': 'application/json' },
-                // แนบรูป 2 ใบเข้าไปใน payload
-                body: JSON.stringify({ mode: mode, items: itemsToSync, collage1: collage1, collage2: collage2 })
-            }).then(() => {
-                showStatus("✅ ทำรายการเสร็จสิ้น!");
-                groupedItems={}; 
-                refreshList(); 
-                calculateTotal();
-                setTimeout(() => { loadSheetData(); }, 1500);
-            }).catch((err) => {
-                console.error(err);
-                showStatus("⚠️ ระบบเชื่อมต่อชีตมีปัญหา");
-            });
+            // 3. เริ่มการทำงานเบื้องหลัง (Background Process)
+            // ใช้ IIFE (Immediately Invoked Function Expression) เพื่อรันโค้ดแบบไม่บล็อกหน้าจอ
+            (async () => {
+                try {
+                    // สร้างรูป Collage (ทำงานเงียบๆ ไม่กวนหน้าจอ)
+                    let collage1 = await createCollage(batch1);
+                    let collage2 = await createCollage(batch2);
+
+                    // ยิงข้อมูลไปที่ Google Apps Script
+                    fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors', 
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ mode: mode, items: itemsToSync, collage1: collage1, collage2: collage2 })
+                    }).then(() => {
+                        console.log("✅ บันทึกบิลเบื้องหลังและส่ง Telegram เสร็จสิ้น!");
+                        // หมายเหตุ: เอา loadSheetData() ออก เพื่อไม่ให้ดึงข้อมูลใหม่มากวนตอนศิษย์พี่กำลังสแกนบิลถัดไป
+                    }).catch((err) => {
+                        console.error("⚠️ เกิดข้อผิดพลาดในการส่งข้อมูลเบื้องหลัง:", err);
+                        // หากมีระบบแจ้งเตือน สามารถใส่เสียงเตือนเล็กๆ ตรงนี้ได้ว่าเน็ตหลุด
+                    });
+                } catch(err) {
+                    console.error("⚠️ Error in background task:", err);
+                }
+            })(); // ปิดคำสั่งรันเบื้องหลัง
         }
 
         window.onload = async () => {
