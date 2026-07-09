@@ -28,3 +28,29 @@ body { margin: 0; padding: 0; background: #000; height: 100vh; overflow: hidden;
 .btn-finish { width: 70%; padding: 10px; font-size: 1.1em; color: #fff; border: none; border-radius: 7px; font-weight: 700; transition: background 0.3s; }
 .btn-cancel { width: 28%; padding: 10px; font-size: 1em; background-color: #c0392b; color: #fff; border: none; border-radius: 7px; font-weight: 700; }
 #statusMessage { color: #f1c40f; font-weight: 700; text-align: center; height: 18px; margin-bottom: 4px; font-size: 0.8em; }
+
+/* เพิ่มเติมสำหรับเมนูใหม่ */
+#headerBar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background: #2c3e50;
+    color: white;
+}
+
+#reportMenu {
+    padding: 5px;
+    border-radius: 5px;
+    background: #ecf0f1;
+    border: none;
+    font-size: 0.9em;
+    max-width: 120px; /* จำกัดความกว้างไม่ให้บังส่วนอื่น */
+}
+
+/* ซ่อนเมนูตอนพิมพ์บิล */
+@media print {
+    #headerBar, #reader, #sleepOverlay, #cart .btn-cancel, #cart .btn-finish, #reportMenu {
+        display: none !important;
+    }
+}

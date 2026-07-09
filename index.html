@@ -8,17 +8,32 @@
 </head>
 <body onclick="wakeScanner()">
     <div id="headerBar">
-        <select id="modeSelect" onchange="changeMode(this.value)">
-            <option value="SELL">ขาย</option>
-            <option value="BUY">ซื้อ</option>
-            <option value="CHECK">เช็ค</option>
-        </select>
-        <div id="clock">--:--:--</div>
-    </div>
+    <select id="modeSelect" onchange="changeMode(this.value)">
+        <option value="SELL">ขาย</option>
+        <option value="BUY">ซื้อ</option>
+        <option value="CHECK">เช็ค</option>
+    </select>
+
+    <select id="reportMenu" onchange="handleMenuAction(this.value)">
+        <option value="" disabled selected>📜 พิมพ์และส่ง</option>
+        <optgroup label="📋 พิมพ์">
+            <option value="print-cart">พิมพ์ ตะกร้าสินค้า</option>
+            <option value="print-today">พิมพ์ ยอดวันนี้</option>
+            <option value="print-low">พิมพ์ สต็อกใกล้หมด</option>
+            <option value="print-best">พิมพ์ สินค้าขายดี</option>
+        </optgroup>
+        <optgroup label="✈️ Telegram">
+            <option value="tg-low">แจ้งสต็อกใกล้หมด</option>
+            <option value="tg-best">แจ้งสินค้าขายดี</option>
+            <option value="tg-info">ข้อมูลร้าน</option>
+        </optgroup>
+    </select>
+    <div id="clock">--:--:--</div>
+</div>
     <div id="reader"></div>
     <div id="sleepOverlay" onclick="wakeScanner()">💤 กดที่นี่เพื่อสแกนสินค้า</div>
     <div id="cart">
-        <h3 style="margin:0 0 4px 0;text-align:center;color:#fff;font-size:1em">ตะกร้าสินค้า</h3>
+        <h3 style="margin:0 0 4px 0;text-align:center;color:#fff;font-size:1em">บาร์โค้ด สินค้า</h3>
         <div class="cart-header"><span>รูป</span><span>บาร์โค้ด</span><span>จำนวน</span><span>ราคา</span><span>ทุน</span><span>สต็อก</span><span>ร้าน</span><span>ลบ</span></div>
         <ul id="itemList"></ul>
         <div id="statusMessage"></div>
