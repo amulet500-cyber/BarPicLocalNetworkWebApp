@@ -30,10 +30,18 @@
     </div>
 
     <script>
-        // 🌟 วาง URL ของ Google Apps Script ตรงนี้
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycg8de6efutKRLsoT8s6AQh3eJaEGmSOUV4kP4jhO9iUMimOzT3tbtcQcJaZArsyzb/exec";
 
         let groupedItems={}, html5QrcodeScanner, idleTimer, isScanning=true;
+
+        // 🌟 ฟังก์ชันเสียงพูดภาษาไทย
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                var msg = new SpeechSynthesisUtterance(text);
+                msg.lang = 'th-TH'; // กำหนดเป็นภาษาไทย
+                window.speechSynthesis.speak(msg);
+            }
+        }
 
         function applyModeColor(mode){
             const header = document.getElementById('headerBar');
@@ -48,7 +56,6 @@
             applyModeColor(m);
             showStatus("โหมด: "+m);
             
-            // 🌟 ซ่อน/โชว์ ปุ่มส่งรายงานตามโหมดที่เลือก
             if (m === 'CHECK') {
                 document.getElementById('btnReport').style.display = 'block';
             } else {
@@ -166,6 +173,7 @@
             if(mode === 'CHECK'){ btn.innerText = "(" + count + ") ตรวจสอบรายการ"; }
             else if(mode === 'BUY'){ btn.innerText = "(" + count + ") จ่ายเงิน " + t + " บาท"; }
             else { btn.innerText = "(" + count + ") ชำระเงิน " + t + " บาท"; }
+            return t; // 🌟 คืนค่า t สำหรับใช้ในเสียงพูด
         }
 
         function updateCellData(c,f,v){
@@ -270,7 +278,6 @@
             return canvas.toDataURL('image/jpeg', 0.6); 
         }
         
-        // 🌟 ฟังก์ชันใหม่ ส่งคำสั่งไปกระตุ้นให้ Google Apps Script ส่งรายงาน Telegram
         function sendReport() {
             showStatus("กำลังสั่งส่งรายงาน...");
             fetch(GOOGLE_SCRIPT_URL, {
@@ -290,6 +297,13 @@
             if(Object.keys(groupedItems).length === 0) return showStatus("ยังไม่มีสินค้าในตะกร้า!"); 
             
             let mode = localStorage.getItem('zenMode') || 'SELL';
+            
+            // 🌟 คำนวณยอดเงินรวม ณ ขณะนี้ และสั่งให้ AI พูด
+            let totalToSpeak = calculateTotal();
+            if (mode === 'SELL' || mode === 'BUY') {
+                speakText(totalToSpeak + " บาท ขอบคุณค่ะ");
+            }
+
             let allItems = Object.values(groupedItems);
             let itemsToSync = allItems.map(i => {
                 return { 
@@ -335,7 +349,6 @@
             document.getElementById('modeSelect').value = m; 
             applyModeColor(m);
             
-            // 🌟 เช็คและแสดงปุ่มตอนโหลดหน้าเว็บ
             document.getElementById('btnReport').style.display = (m === 'CHECK') ? 'block' : 'none';
 
             await loadSheetData(); 
