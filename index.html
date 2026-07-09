@@ -33,13 +33,15 @@
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycg8de6efutKRLsoT8s6AQh3eJaEGmSOUV4kP4jhO9iUMimOzT3tbtcQcJaZArsyzb/exec";
 
         let groupedItems={}, html5QrcodeScanner, idleTimer, isScanning=true;
+        let currentSpeech = null; // 🌟 ป้องกัน Garbage Collection Bug
 
-        // 🌟 ฟังก์ชันเสียงพูดภาษาไทย
+        // 🌟 ฟังก์ชันเสียงพูดภาษาไทย (ปรับปรุงใหม่)
         function speakText(text) {
             if ('speechSynthesis' in window) {
-                var msg = new SpeechSynthesisUtterance(text);
-                msg.lang = 'th-TH'; // กำหนดเป็นภาษาไทย
-                window.speechSynthesis.speak(msg);
+                window.speechSynthesis.cancel(); // เคลียร์คิวเสียงเก่าที่อาจค้างอยู่
+                currentSpeech = new SpeechSynthesisUtterance(text);
+                currentSpeech.lang = 'th-TH'; // กำหนดเป็นภาษาไทย
+                window.speechSynthesis.speak(currentSpeech);
             }
         }
 
@@ -68,7 +70,20 @@
 
         function resetIdleTimer(){clearTimeout(idleTimer); idleTimer=setTimeout(sleepScanner,300000)}
         function sleepScanner(){if(isScanning){html5QrcodeScanner.clear().then(()=>{isScanning=false;document.getElementById('sleepOverlay').style.display='flex';showStatus("💤 พักสแกนเนอร์")})}}
-        function wakeScanner(){if(!isScanning){isScanning=true;document.getElementById('sleepOverlay').style.display='none';showStatus("📷 พร้อมสแกน");html5QrcodeScanner.render(onScanSuccess);resetIdleTimer()}}
+        
+        function wakeScanner(){
+            if(!isScanning){
+                isScanning=true;
+                document.getElementById('sleepOverlay').style.display='none';
+                showStatus("📷 พร้อมสแกน");
+                html5QrcodeScanner.render(onScanSuccess);
+                resetIdleTimer();
+            }
+            // 🌟 แอบปลดล็อกเสียงเบราว์เซอร์เมื่อมีการแตะหน้าจอ
+            if('speechSynthesis' in window) {
+                window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+            }
+        }
         
         setInterval(()=>{
             const n=new Date();
@@ -173,7 +188,7 @@
             if(mode === 'CHECK'){ btn.innerText = "(" + count + ") ตรวจสอบรายการ"; }
             else if(mode === 'BUY'){ btn.innerText = "(" + count + ") จ่ายเงิน " + t + " บาท"; }
             else { btn.innerText = "(" + count + ") ชำระเงิน " + t + " บาท"; }
-            return t; // 🌟 คืนค่า t สำหรับใช้ในเสียงพูด
+            return t; 
         }
 
         function updateCellData(c,f,v){
@@ -298,7 +313,7 @@
             
             let mode = localStorage.getItem('zenMode') || 'SELL';
             
-            // 🌟 คำนวณยอดเงินรวม ณ ขณะนี้ และสั่งให้ AI พูด
+            // 🌟 ให้เสียงพูดเริ่มทำงานทันทีก่อนกระบวนการที่กิน CPU หนักๆ จะเริ่ม
             let totalToSpeak = calculateTotal();
             if (mode === 'SELL' || mode === 'BUY') {
                 speakText(totalToSpeak + " บาท ขอบคุณค่ะ");
@@ -323,25 +338,28 @@
             calculateTotal();
             showStatus("⏳ เคลียร์หน้าจอแล้ว! (กำลังบันทึกบิลเบื้องหลัง)");
 
-            (async () => {
-                try {
-                    let collage1 = await createCollage(batch1);
-                    let collage2 = await createCollage(batch2);
+            // 🌟 หน่วงเวลา (Delay) 500 ms เพื่อให้ CPU ว่าง ให้เสียงมีเวลาโหลดและเปล่งออกมาก่อน
+            setTimeout(() => {
+                (async () => {
+                    try {
+                        let collage1 = await createCollage(batch1);
+                        let collage2 = await createCollage(batch2);
 
-                    fetch(GOOGLE_SCRIPT_URL, {
-                        method: 'POST',
-                        mode: 'no-cors', 
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ mode: mode, items: itemsToSync, collage1: collage1, collage2: collage2 })
-                    }).then(() => {
-                        console.log("✅ บันทึกบิลเบื้องหลังและส่ง Telegram เสร็จสิ้น!");
-                    }).catch((err) => {
-                        console.error("⚠️ เกิดข้อผิดพลาดในการส่งข้อมูลเบื้องหลัง:", err);
-                    });
-                } catch(err) {
-                    console.error("⚠️ Error in background task:", err);
-                }
-            })(); 
+                        fetch(GOOGLE_SCRIPT_URL, {
+                            method: 'POST',
+                            mode: 'no-cors', 
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ mode: mode, items: itemsToSync, collage1: collage1, collage2: collage2 })
+                        }).then(() => {
+                            console.log("✅ บันทึกบิลเบื้องหลังและส่ง Telegram เสร็จสิ้น!");
+                        }).catch((err) => {
+                            console.error("⚠️ เกิดข้อผิดพลาดในการส่งข้อมูลเบื้องหลัง:", err);
+                        });
+                    } catch(err) {
+                        console.error("⚠️ Error in background task:", err);
+                    }
+                })(); 
+            }, 500); 
         }
 
         window.onload = async () => {
