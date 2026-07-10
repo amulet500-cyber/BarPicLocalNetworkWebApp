@@ -5,31 +5,45 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://unpkg.com/html5-qrcode"></script>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* CSS สำหรับการสั่งพิมพ์โดยเฉพาะ */
+        @media print {
+            body * { visibility: hidden; } /* ซ่อนทุกอย่างบนหน้าจอ */
+            #printArea, #printArea * { visibility: visible; } /* แสดงเฉพาะใบเสร็จ */
+            #printArea { position: absolute; left: 0; top: 0; width: 100%; margin: 0; font-family: monospace; }
+        }
+        #printArea { display: none; } /* ซ่อนไว้เวลาใช้งานปกติ */
+        @media print { #printArea { display: block; } }
+    </style>
 </head>
 <body onclick="wakeScanner()">
-    <div id="headerBar">
-    <select id="modeSelect" onchange="changeMode(this.value)">
-        <option value="SELL">ขาย</option>
-        <option value="BUY">ซื้อ</option>
-        <option value="CHECK">เช็ค</option>
-    </select>
+    
+    <div id="printArea"></div>
 
-    <select id="reportMenu" onchange="handleMenuAction(this.value)">
-        <option value="" disabled selected>📜 พิมพ์และส่ง</option>
-        <optgroup label="📋 พิมพ์">
-            <option value="print-cart">พิมพ์ ตะกร้าสินค้า</option>
-            <option value="print-today">พิมพ์ ยอดวันนี้</option>
-            <option value="print-low">พิมพ์ สต็อกใกล้หมด</option>
-            <option value="print-best">พิมพ์ สินค้าขายดี</option>
-        </optgroup>
-        <optgroup label="✈️ Telegram">
-            <option value="tg-low">แจ้งสต็อกใกล้หมด</option>
-            <option value="tg-best">แจ้งสินค้าขายดี</option>
-            <option value="tg-info">ข้อมูลร้าน</option>
-        </optgroup>
-    </select>
-    <div id="clock">--:--:--</div>
-</div>
+    <div id="headerBar" style="display: flex; justify-content: space-between; padding: 10px; color: white;">
+        <select id="modeSelect" onchange="changeMode(this.value)" style="padding: 5px; border-radius: 5px;">
+            <option value="SELL">ขาย</option>
+            <option value="BUY">ซื้อ</option>
+            <option value="CHECK">เช็ค</option>
+        </select>
+
+        <select id="reportMenu" onchange="handleMenuAction(this.value)" style="padding: 5px; border-radius: 5px; max-width: 130px;">
+            <option value="" disabled selected>📜 เมนูและส่ง</option>
+            <optgroup label="📋 พิมพ์">
+                <option value="print-cart">พิมพ์ ตะกร้าสินค้า</option>
+                <option value="print-today">พิมพ์ ยอดวันนี้</option>
+                <option value="print-low">พิมพ์ สต็อกใกล้หมด</option>
+                <option value="print-best">พิมพ์ สินค้าขายดี</option>
+            </optgroup>
+            <optgroup label="✈️ Telegram">
+                <option value="tg-low">แจ้งสต็อกใกล้หมด</option>
+                <option value="tg-best">แจ้งสินค้าขายดี</option>
+                <option value="tg-info">ข้อมูลร้าน</option>
+            </optgroup>
+        </select>
+        <div id="clock">--:--:--</div>
+    </div>
+
     <div id="reader"></div>
     <div id="sleepOverlay" onclick="wakeScanner()">💤 กดที่นี่เพื่อสแกนสินค้า</div>
     <div id="cart">
@@ -39,7 +53,6 @@
         <div id="statusMessage"></div>
         <div style="display:flex;gap:3px">
             <button class="btn-cancel" onclick="cancelBasket()">ยกเลิก</button>
-            <button id="btnReport" class="btn-report" onclick="sendReport()" style="display:none; background-color:#8e44ad; color:#fff; border:none; border-radius:5px; flex:1; cursor:pointer; font-weight:bold;">ส่งรายงาน Telegram</button>
             <button id="btnFinish" class="btn-finish" onclick="finishSale()">ชำระเงิน</button>
         </div>
     </div>
@@ -48,14 +61,13 @@
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycg8de6efutKRLsoT8s6AQh3eJaEGmSOUV4kP4jhO9iUMimOzT3tbtcQcJaZArsyzb/exec";
 
         let groupedItems={}, html5QrcodeScanner, idleTimer, isScanning=true;
-        let currentSpeech = null; // 🌟 ป้องกัน Garbage Collection Bug
+        let currentSpeech = null;
 
-        // 🌟 ฟังก์ชันเสียงพูดภาษาไทย (ปรับปรุงใหม่)
         function speakText(text) {
             if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel(); // เคลียร์คิวเสียงเก่าที่อาจค้างอยู่
+                window.speechSynthesis.cancel();
                 currentSpeech = new SpeechSynthesisUtterance(text);
-                currentSpeech.lang = 'th-TH'; // กำหนดเป็นภาษาไทย
+                currentSpeech.lang = 'th-TH';
                 window.speechSynthesis.speak(currentSpeech);
             }
         }
@@ -72,15 +84,68 @@
             localStorage.setItem('zenMode',m);
             applyModeColor(m);
             showStatus("โหมด: "+m);
-            
-            if (m === 'CHECK') {
-                document.getElementById('btnReport').style.display = 'block';
-            } else {
-                document.getElementById('btnReport').style.display = 'none';
-            }
-
             calculateTotal();
             refreshList();
+        }
+
+        // 🌟 จัดการเมนู Dropdown (แยกพิมพ์ กับ ส่ง Telegram)
+        async function handleMenuAction(action) {
+            if (!action) return;
+            document.getElementById("reportMenu").selectedIndex = 0; // รีเซ็ตเมนูกลับ
+
+            if (action === 'print-cart') {
+                printCartReceipt();
+            } 
+            else if (action.startsWith('print-')) {
+                showStatus("กำลังดึงข้อมูลจากชีตเพื่อพิมพ์...");
+                speakText("กำลังประมวลผลข้อมูลการพิมพ์");
+                try {
+                    let res = await fetch(`${GOOGLE_SCRIPT_URL}?mode=GET_PRINT_DATA&type=${action}`);
+                    let result = await res.json();
+                    if (result.status === 'success') {
+                        document.getElementById("printArea").innerHTML = result.html;
+                        window.print();
+                        showStatus("พร้อมพิมพ์");
+                    }
+                } catch(err) { showStatus("ดึงข้อมูลล้มเหลว"); }
+            } 
+            else if (action.startsWith('tg-')) {
+                showStatus("กำลังส่งข้อมูลเข้า Telegram...");
+                speakText("สั่งส่งข้อมูลเข้าเทเลแกรมแล้ว");
+                fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: action })
+                });
+            }
+        }
+
+        // 🌟 ฟังก์ชันพิมพ์ตะกร้าสินค้า (ตัดทุน/กำไรออกให้ลูกค้าดู)
+        function printCartReceipt() {
+            let items = Object.values(groupedItems);
+            if (items.length === 0) return showStatus("ไม่มีสินค้าในตะกร้า");
+            
+            let n = new Date();
+            let timeStr = n.toLocaleDateString('th-TH') + " " + n.toLocaleTimeString('th-TH');
+            
+            let html = `<h3 style="text-align:center; margin-bottom:5px;">ใบรายการสินค้า</h3>`;
+            html += `<p style="text-align:center; margin:0 0 10px 0; font-size:12px;">เวลา: ${timeStr}</p><hr style="border-top:1px dashed #000;">`;
+            html += `<table style="width:100%; border-collapse:collapse; font-size:14px;"><tr><th style="text-align:left;">รายการ</th><th style="text-align:right;">จน.</th><th style="text-align:right;">ราคา</th><th style="text-align:right;">รวม</th></tr>`;
+            
+            let total = 0;
+            items.forEach(i => {
+                let p = getCellData(i.code, 'price', 0);
+                let sum = p * i.qty;
+                total += sum;
+                html += `<tr><td style="padding-top:5px;">${i.code}</td><td style="text-align:right;">${i.qty}</td><td style="text-align:right;">${p}</td><td style="text-align:right;">${sum}</td></tr>`;
+            });
+            html += `</table><hr style="border-top:1px dashed #000;">`;
+            html += `<h3 style="text-align:right;">ยอดรวมสุทธิ: ${total.toLocaleString()} บาท</h3>`;
+            html += `<p style="text-align:center; font-size:12px;">ขอบคุณที่ใช้บริการ</p>`;
+            
+            document.getElementById("printArea").innerHTML = html;
+            window.print();
         }
 
         function resetIdleTimer(){clearTimeout(idleTimer); idleTimer=setTimeout(sleepScanner,300000)}
@@ -94,7 +159,6 @@
                 html5QrcodeScanner.render(onScanSuccess);
                 resetIdleTimer();
             }
-            // 🌟 แอบปลดล็อกเสียงเบราว์เซอร์เมื่อมีการแตะหน้าจอ
             if('speechSynthesis' in window) {
                 window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
             }
@@ -110,7 +174,7 @@
         function showStatus(m){const s=document.getElementById("statusMessage");s.innerText=m;setTimeout(()=>{s.innerText=""},3000)}
         
         async function loadSheetData() {
-            showStatus("กำลังซิงค์ข้อมูลล่าสุดจากชีต...");
+            showStatus("กำลังซิงค์ข้อมูลล่าสุด...");
             try {
                 const cacheBusterUrl = GOOGLE_SCRIPT_URL + (GOOGLE_SCRIPT_URL.includes('?') ? '&' : '?') + '_=' + new Date().getTime();
                 let response = await fetch(cacheBusterUrl);
@@ -119,20 +183,14 @@
                 let formattedData = {};
                 for (const [code, info] of Object.entries(data)) {
                     formattedData[code] = {
-                        price: { val: info.price },
-                        cost: { val: info.cost },
-                        stock: { val: info.stock },
-                        supplier: { val: info.supplier }
+                        price: { val: info.price }, cost: { val: info.cost },
+                        stock: { val: info.stock }, supplier: { val: info.supplier }
                     };
                 }
                 localStorage.setItem('productData', JSON.stringify(formattedData));
-                refreshList();
-                calculateTotal();
-                showStatus("✅ ซิงค์สต็อกตรงกับชีตแล้ว!");
-            } catch (error) {
-                console.error("Error loading sheet data:", error);
-                showStatus("⚠️ ซิงค์ล้มเหลว กำลังใช้ข้อมูลล่าสุดในเครื่อง");
-            }
+                refreshList(); calculateTotal();
+                showStatus("✅ ซิงค์ข้อมูลเรียบร้อย");
+            } catch (error) { showStatus("⚠️ ใช้ข้อมูลล่าสุดในเครื่อง"); }
         }
 
         function changeQty(code, newValue) {
@@ -140,7 +198,6 @@
             if (newQty < 0) newQty = 0;
             let oldQty = parseInt(groupedItems[code].qty) || 0;
             let diff = newQty - oldQty;
-            
             groupedItems[code].qty = newQty;
             
             let data = JSON.parse(localStorage.getItem('productData')||'{}');
@@ -151,24 +208,19 @@
                 else if (mode === 'BUY') data[code].stock.val = parseInt(data[code].stock.val || 0) + diff;
                 localStorage.setItem('productData', JSON.stringify(data));
             }
-            
-            calculateTotal();
-            refreshList();
+            calculateTotal(); refreshList();
         }
 
         function removeItem(code){ 
             let data = JSON.parse(localStorage.getItem('productData')||'{}');
             let mode = localStorage.getItem('zenMode') || 'SELL';
-            
             if(data[code]) {
                 if(mode === 'SELL') data[code].stock.val = parseInt(data[code].stock.val || 0) + groupedItems[code].qty;
                 else if(mode === 'BUY') data[code].stock.val = parseInt(data[code].stock.val || 0) - groupedItems[code].qty;
                 localStorage.setItem('productData', JSON.stringify(data));
             }
-            
             delete groupedItems[code]; 
-            refreshList(); 
-            calculateTotal(); 
+            refreshList(); calculateTotal(); 
         }
 
         function autoScrollToBottom(){ const list = document.getElementById("itemList"); list.scrollTop = list.scrollHeight; }
@@ -185,9 +237,7 @@
                     }
                 });
                 localStorage.setItem('productData', JSON.stringify(data));
-                groupedItems={}; 
-                refreshList(); 
-                calculateTotal(); 
+                groupedItems={}; refreshList(); calculateTotal(); 
             } 
         }
         
@@ -245,8 +295,7 @@
                 let data = JSON.parse(localStorage.getItem('productData')||'{}');
                 if (mode === 'SELL') { if(data[d]){ data[d].stock.val = parseInt(data[d].stock.val || 0) - 1; localStorage.setItem('productData', JSON.stringify(data)); } }
                 else if (mode === 'BUY') { if(data[d]){ data[d].stock.val = parseInt(data[d].stock.val || 0) + 1; localStorage.setItem('productData', JSON.stringify(data)); } }
-                refreshList(); 
-                calculateTotal(); 
+                refreshList(); calculateTotal(); 
             }
 
             setTimeout(() => {
@@ -272,29 +321,20 @@
                 c.width=100; c.height=100; 
                 c.getContext('2d').drawImage(v,0,0,100,100);
                 return c.toDataURL('image/jpeg',0.5)
-            } 
-            return "" 
+            } return "" 
         }
 
         async function createCollage(items) {
             if (items.length === 0) return ""; 
-
             const THUMB_SIZE = 100;
-            let cols = 4;
-            let rows = Math.ceil(items.length / cols);
-
+            let cols = 4; let rows = Math.ceil(items.length / cols);
             let canvas = document.createElement('canvas');
-            canvas.width = cols * THUMB_SIZE;
-            canvas.height = rows * THUMB_SIZE;
+            canvas.width = cols * THUMB_SIZE; canvas.height = rows * THUMB_SIZE;
             let ctx = canvas.getContext('2d');
-        
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             const loadImage = (src) => new Promise((resolve) => {
-                let img = new Image();
-                img.onload = () => resolve(img);
-                img.src = src;
+                let img = new Image(); img.onload = () => resolve(img); img.src = src;
             });
 
             for (let i = 0; i < items.length; i++) {
@@ -307,72 +347,34 @@
             }
             return canvas.toDataURL('image/jpeg', 0.6); 
         }
-        
-        function sendReport() {
-            showStatus("กำลังสั่งส่งรายงาน...");
-            fetch(GOOGLE_SCRIPT_URL, {
-                method: 'POST',
-                mode: 'no-cors', 
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mode: 'REPORT' })
-            }).then(() => {
-                showStatus("✅ สั่งส่งรายงานเรียบร้อยแล้ว!");
-            }).catch((err) => {
-                showStatus("⚠️ เกิดข้อผิดพลาดในการส่งข้อมูล");
-                console.error(err);
-            });
-        }
 
         function finishSale() { 
             if(Object.keys(groupedItems).length === 0) return showStatus("ยังไม่มีสินค้าในตะกร้า!"); 
-            
             let mode = localStorage.getItem('zenMode') || 'SELL';
-            
-            // 🌟 ให้เสียงพูดเริ่มทำงานทันทีก่อนกระบวนการที่กิน CPU หนักๆ จะเริ่ม
             let totalToSpeak = calculateTotal();
-            if (mode === 'SELL' || mode === 'BUY') {
-                speakText(totalToSpeak + " บาท ขอบคุณค่ะ");
-            }
+            if (mode === 'SELL' || mode === 'BUY') speakText(totalToSpeak + " บาท ขอบคุณค่ะ");
 
             let allItems = Object.values(groupedItems);
             let itemsToSync = allItems.map(i => {
                 return { 
-                    code: i.code, 
-                    qty: i.qty, 
-                    price: getCellData(i.code, 'price', 0), 
-                    cost: getCellData(i.code, 'cost', 0), 
-                    supplier: getCellData(i.code, 'supplier', ''),
-                    stock: getCellData(i.code, 'stock', 0)
+                    code: i.code, qty: i.qty, price: getCellData(i.code, 'price', 0), 
+                    cost: getCellData(i.code, 'cost', 0), supplier: getCellData(i.code, 'supplier', ''), stock: getCellData(i.code, 'stock', 0)
                 };
             });
-            let batch1 = allItems.slice(0, 16);
-            let batch2 = allItems.slice(16, 32);
+            let batch1 = allItems.slice(0, 16); let batch2 = allItems.slice(16, 32);
 
-            groupedItems = {}; 
-            refreshList(); 
-            calculateTotal();
-            showStatus("⏳ เคลียร์หน้าจอแล้ว! (กำลังบันทึกบิลเบื้องหลัง)");
+            groupedItems = {}; refreshList(); calculateTotal();
+            showStatus("⏳ กำลังบันทึกบิล...");
 
-            // 🌟 หน่วงเวลา (Delay) 500 ms เพื่อให้ CPU ว่าง ให้เสียงมีเวลาโหลดและเปล่งออกมาก่อน
             setTimeout(() => {
                 (async () => {
                     try {
-                        let collage1 = await createCollage(batch1);
-                        let collage2 = await createCollage(batch2);
-
+                        let collage1 = await createCollage(batch1); let collage2 = await createCollage(batch2);
                         fetch(GOOGLE_SCRIPT_URL, {
-                            method: 'POST',
-                            mode: 'no-cors', 
-                            headers: { 'Content-Type': 'application/json' },
+                            method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ mode: mode, items: itemsToSync, collage1: collage1, collage2: collage2 })
-                        }).then(() => {
-                            console.log("✅ บันทึกบิลเบื้องหลังและส่ง Telegram เสร็จสิ้น!");
-                        }).catch((err) => {
-                            console.error("⚠️ เกิดข้อผิดพลาดในการส่งข้อมูลเบื้องหลัง:", err);
                         });
-                    } catch(err) {
-                        console.error("⚠️ Error in background task:", err);
-                    }
+                    } catch(err) { console.error("Error:", err); }
                 })(); 
             }, 500); 
         }
@@ -381,20 +383,13 @@
             let m = localStorage.getItem('zenMode') || 'SELL'; 
             document.getElementById('modeSelect').value = m; 
             applyModeColor(m);
-            
-            document.getElementById('btnReport').style.display = (m === 'CHECK') ? 'block' : 'none';
-
             await loadSheetData(); 
-            
             html5QrcodeScanner = new Html5QrcodeScanner("reader", {
-                fps: 10,
-                qrbox: {width: 200, height: 60},
-                facingMode: "environment",
+                fps: 10, qrbox: {width: 200, height: 60}, facingMode: "environment",
                 formatsToSupport: [Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.QR_CODE]
             });
             html5QrcodeScanner.render(onScanSuccess); 
             resetIdleTimer(); 
-            
             document.addEventListener('mousemove', resetIdleTimer); 
             document.addEventListener('touchstart', resetIdleTimer); 
             document.addEventListener('click', resetIdleTimer);
