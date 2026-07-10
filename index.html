@@ -1,18 +1,53 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>สแกนสินค้า ศิษย์พี่ Zen - Sync GoogleSheet</title>
+    <title>สแกนสินค้า ศิษย์พี่ - Offline First Sync</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
-    <link rel="stylesheet" href="style.css">
     <style>
-        /* CSS สำหรับการสั่งพิมพ์โดยเฉพาะ */
+        /* CSS เดิมของศิษย์พี่ */
+        body { margin: 0; padding: 0; background: #000; height: 100vh; overflow: hidden; font-family: sans-serif; }
+        #headerBar { position: fixed; top: 0; left: 0; width: 100%; z-index: 500; display: flex; justify-content: space-between; align-items: center; padding: 5px 10px; color: #fff; height: 35px; box-sizing: border-box; transition: background 0.3s; }
+        #modeSelect { background: rgba(0,0,0,0.5); color: #fff; border: 1px solid #fff; padding: 2px; font-size: 0.9em; border-radius: 4px; }
+        #clock { font-size: 0.8em; margin: 0 5px; }
+
+        #reader__dashboard_section { position: fixed; top: 35px; left: 0; width: 100%; z-index: 200; transform: scale(0.5); transform-origin: top center; background: rgba(0,0,0,0.3)!important; border-radius: 10px; padding: 5px!important; }
+        #reader { position: fixed; top: 65px; left: 0; width: 100%; height: 35vh; z-index: 1; }
+        #sleepOverlay { position: fixed; top: 65px; left: 0; width: 100%; height: 35vh; z-index: 1000; background: rgba(0,0,0,0.9); color: #f1c40f; display: none; justify-content: center; align-items: center; font-size: 1.3em; font-weight: bold; cursor: pointer; text-align: center; }
+        #reader__filescan_input, #reader__filescan_input+span, #reader__filescan_input+a { display: none!important; }
+        #reader button { padding: 6px 12px!important; font-size: 1.3em!important; border: 1px solid #f1c40f!important; border-radius: 5px!important; color: #f1c40f!important; background: rgba(50,50,50,0.5)!important; }
+        #reader__dashboard_section span, #reader__dashboard_section select { color: #f1c40f!important; }
+        #reader__dashboard_section select { background: rgba(0,0,0,0.5)!important; border: 1px solid #f1c40f!important; }
+        #cart { position: fixed; top: 48vh; bottom: 0; left: 0; width: 100%; background: rgba(255,255,255,0.15); border-radius: 15px 15px 0 0; padding: 8px; z-index: 300; box-sizing: border-box; display: flex; flex-direction: column; }
+
+        .cart-header, .item-row { display: grid; grid-template-columns: 26px 1.5fr 35px 37px 37px 37px 26px 24px; gap: 3px; align-items: center; padding: 4px 0; border-bottom: 1px solid #777; font-size: 0.58em; color: #fff; }
+        .cart-header { border-bottom: 1px solid #aaa; margin-bottom: 4px; font-weight: 700; text-align: center; font-size: 0.64em; }
+        #itemList { flex-grow: 1; overflow-y: auto; list-style-type: none; padding: 0; margin: 0 0 4px 0; }
+        .item-row img { width: 23px; height: 23px; object-fit: cover; border: 1px solid #ccc; }
+        .barcode-text { font-size: 0.9em; white-space: nowrap; overflow: hidden; }
+        .item-input { width: 100%; padding: 2px; text-align: center; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.3); border-radius: 3px; color: #fff; box-sizing: border-box; font-size: 1.05em; }
+
+        .cost-input { transition: all .3s ease; }
+        .hidden-cost { color: rgba(255,255,255,0.01)!important; background: rgba(0,0,0,0.05)!important; }
+        .visible-cost { color: #fff!important; background: rgba(0,0,0,0.5)!important; border: 1px solid #f1c40f!important; }
+        .cost-filled { border: 1px solid rgba(201, 204, 46, 0.8)!important; }
+        .cost-empty { border: 1px solid rgba(231, 73, 56, 0.8)!important; }
+        .btn-delete { background: #e74c3c; color: #fff; border: none; border-radius: 3px; padding: 3px; font-weight: 700; cursor: pointer; }
+        .btn-finish { width: 70%; padding: 10px; font-size: 1.1em; color: #fff; border: none; border-radius: 7px; font-weight: 700; transition: background 0.3s; }
+        .btn-cancel { width: 28%; padding: 10px; font-size: 1em; background-color: #c0392b; color: #fff; border: none; border-radius: 7px; font-weight: 700; }
+        #statusMessage { color: #f1c40f; font-weight: 700; text-align: center; height: 18px; margin-bottom: 4px; font-size: 0.8em; }
+        
+        /* 🌟 CSS เพิ่มเติมสำหรับป้ายแจ้งเตือน Offline */
+        #syncBadge { display: none; background: #e74c3c; color: white; padding: 2px 5px; border-radius: 10px; font-size: 0.7em; margin-left: 5px; animation: blink 1.5s infinite; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
         @media print {
-            body * { visibility: hidden; } /* ซ่อนทุกอย่างบนหน้าจอ */
-            #printArea, #printArea * { visibility: visible; } /* แสดงเฉพาะใบเสร็จ */
+            body * { visibility: hidden; } 
+            #printArea, #printArea * { visibility: visible; } 
             #printArea { position: absolute; left: 0; top: 0; width: 100%; margin: 0; font-family: monospace; }
         }
-        #printArea { display: none; } /* ซ่อนไว้เวลาใช้งานปกติ */
+        #printArea { display: none; }
         @media print { #printArea { display: block; } }
     </style>
 </head>
@@ -20,15 +55,16 @@
     
     <div id="printArea"></div>
 
-    <div id="headerBar" style="display: flex; justify-content: space-between; padding: 10px; color: white;">
-        <select id="modeSelect" onchange="changeMode(this.value)" style="padding: 5px; border-radius: 5px;">
+    <div id="headerBar">
+        <select id="modeSelect" onchange="changeMode(this.value)">
             <option value="SELL">ขาย</option>
             <option value="BUY">ซื้อ</option>
             <option value="CHECK">เช็ค</option>
         </select>
 
-        <select id="reportMenu" onchange="handleMenuAction(this.value)" style="padding: 5px; border-radius: 5px; max-width: 130px;">
+        <select id="reportMenu" onchange="handleMenuAction(this.value)" style="padding: 5px; border-radius: 5px; max-width: 130px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid #fff;">
             <option value="" disabled selected>📜 เมนูและส่ง</option>
+            <option value="force-sync" style="background:#2c3e50;">📥 อัปเดตข้อมูลสินค้า</option>
             <optgroup label="📋 พิมพ์">
                 <option value="print-cart">พิมพ์ ตะกร้าสินค้า</option>
                 <option value="print-today">พิมพ์ ยอดวันนี้</option>
@@ -41,11 +77,15 @@
                 <option value="tg-info">ข้อมูลร้าน</option>
             </optgroup>
         </select>
-        <div id="clock">--:--:--</div>
+        <div style="display:flex; align-items:center;">
+            <div id="clock">--:--:--</div>
+            <div id="syncBadge">รอยืนยัน 0</div>
+        </div>
     </div>
 
     <div id="reader"></div>
     <div id="sleepOverlay" onclick="wakeScanner()">💤 กดที่นี่เพื่อสแกนสินค้า</div>
+    
     <div id="cart">
         <h3 style="margin:0 0 4px 0;text-align:center;color:#fff;font-size:1em">บาร์โค้ด สินค้า</h3>
         <div class="cart-header"><span>รูป</span><span>บาร์โค้ด</span><span>จำนวน</span><span>ราคา</span><span>ทุน</span><span>สต็อก</span><span>ร้าน</span><span>ลบ</span></div>
@@ -59,6 +99,13 @@
 
     <script>
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycg8de6efutKRLsoT8s6AQh3eJaEGmSOUV4kP4jhO9iUMimOzT3tbtcQcJaZArsyzb/exec";
+
+        // 🌟 1. ตั้งค่าฐานข้อมูล Dexie.js (Offline-First) 🌟
+        const db = new Dexie("ShopDatabase");
+        db.version(1).stores({
+            products: 'code, price, cost, stock, supplier', // ตารางสินค้า (code เป็น Primary Key)
+            pendingSales: '++id, mode, items, collage1, collage2, timestamp' // ตารางคิวบิลขาย (id อัตโนมัติ)
+        });
 
         let groupedItems={}, html5QrcodeScanner, idleTimer, isScanning=true;
         let currentSpeech = null;
@@ -88,15 +135,15 @@
             refreshList();
         }
 
-        // 🌟 จัดการเมนู Dropdown (แยกพิมพ์ กับ ส่ง Telegram)
         async function handleMenuAction(action) {
             if (!action) return;
-            document.getElementById("reportMenu").selectedIndex = 0; // รีเซ็ตเมนูกลับ
-
-            if (action === 'print-cart') {
+            document.getElementById("reportMenu").selectedIndex = 0; 
+            
+            if (action === 'force-sync') {
+                await loadSheetData(); // ดึงข้อมูลใหม่ลง Dexie
+            } else if (action === 'print-cart') {
                 printCartReceipt();
-            } 
-            else if (action.startsWith('print-')) {
+            } else if (action.startsWith('print-')) {
                 showStatus("กำลังดึงข้อมูลจากชีตเพื่อพิมพ์...");
                 speakText("กำลังประมวลผลข้อมูลการพิมพ์");
                 try {
@@ -108,20 +155,21 @@
                         showStatus("พร้อมพิมพ์");
                     }
                 } catch(err) { showStatus("ดึงข้อมูลล้มเหลว"); }
-            } 
-            else if (action.startsWith('tg-')) {
+            } else if (action.startsWith('tg-')) {
                 showStatus("กำลังส่งข้อมูลเข้า Telegram...");
                 speakText("สั่งส่งข้อมูลเข้าเทเลแกรมแล้ว");
-                fetch(GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ mode: action })
-                });
+                if(navigator.onLine) {
+                    fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST', mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ mode: action })
+                    });
+                } else {
+                    showStatus("ออฟไลน์: ไม่สามารถส่ง Telegram ได้");
+                }
             }
         }
 
-        // 🌟 ฟังก์ชันพิมพ์ตะกร้าสินค้า (ตัดทุน/กำไรออกให้ลูกค้าดู)
         function printCartReceipt() {
             let items = Object.values(groupedItems);
             if (items.length === 0) return showStatus("ไม่มีสินค้าในตะกร้า");
@@ -135,7 +183,7 @@
             
             let total = 0;
             items.forEach(i => {
-                let p = getCellData(i.code, 'price', 0);
+                let p = i.price || 0;
                 let sum = p * i.qty;
                 total += sum;
                 html += `<tr><td style="padding-top:5px;">${i.code}</td><td style="text-align:right;">${i.qty}</td><td style="text-align:right;">${p}</td><td style="text-align:right;">${sum}</td></tr>`;
@@ -159,9 +207,7 @@
                 html5QrcodeScanner.render(onScanSuccess);
                 resetIdleTimer();
             }
-            if('speechSynthesis' in window) {
-                window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
-            }
+            if('speechSynthesis' in window) window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
         }
         
         setInterval(()=>{
@@ -173,51 +219,65 @@
 
         function showStatus(m){const s=document.getElementById("statusMessage");s.innerText=m;setTimeout(()=>{s.innerText=""},3000)}
         
+        // 🌟 2. โหลดข้อมูลลง Dexie Database 🌟
         async function loadSheetData() {
-            showStatus("กำลังซิงค์ข้อมูลล่าสุด...");
+            if(!navigator.onLine) {
+                showStatus("ออฟไลน์: ใช้ข้อมูลเดิมในเครื่อง");
+                return;
+            }
+            showStatus("กำลังอัปเดตฐานข้อมูล...");
             try {
                 const cacheBusterUrl = GOOGLE_SCRIPT_URL + (GOOGLE_SCRIPT_URL.includes('?') ? '&' : '?') + '_=' + new Date().getTime();
                 let response = await fetch(cacheBusterUrl);
                 let data = await response.json();
                 
-                let formattedData = {};
+                let productArray = [];
                 for (const [code, info] of Object.entries(data)) {
-                    formattedData[code] = {
-                        price: { val: info.price }, cost: { val: info.cost },
-                        stock: { val: info.stock }, supplier: { val: info.supplier }
-                    };
+                    productArray.push({
+                        code: code,
+                        price: info.price,
+                        cost: info.cost,
+                        stock: info.stock,
+                        supplier: info.supplier
+                    });
                 }
-                localStorage.setItem('productData', JSON.stringify(formattedData));
-                refreshList(); calculateTotal();
-                showStatus("✅ ซิงค์ข้อมูลเรียบร้อย");
-            } catch (error) { showStatus("⚠️ ใช้ข้อมูลล่าสุดในเครื่อง"); }
+                
+                await db.products.clear(); // ล้างของเก่า
+                await db.products.bulkPut(productArray); // เทข้อมูลใหม่ลงไป (เร็วมาก)
+                
+                showStatus("✅ อัปเดตฐานข้อมูลเรียบร้อย");
+            } catch (error) { 
+                showStatus("⚠️ โหลดข้อมูลล้มเหลว ใช้ของเดิมในเครื่อง"); 
+            }
         }
 
-        function changeQty(code, newValue) {
+        async function changeQty(code, newValue) {
             let newQty = parseInt(newValue) || 0;
             if (newQty < 0) newQty = 0;
             let oldQty = parseInt(groupedItems[code].qty) || 0;
             let diff = newQty - oldQty;
             groupedItems[code].qty = newQty;
             
-            let data = JSON.parse(localStorage.getItem('productData')||'{}');
             let mode = localStorage.getItem('zenMode') || 'SELL';
+            let product = await db.products.get(code);
             
-            if(data[code]) {
-                if (mode === 'SELL') data[code].stock.val = parseInt(data[code].stock.val || 0) - diff;
-                else if (mode === 'BUY') data[code].stock.val = parseInt(data[code].stock.val || 0) + diff;
-                localStorage.setItem('productData', JSON.stringify(data));
+            if(product) {
+                if (mode === 'SELL') product.stock = parseInt(product.stock || 0) - diff;
+                else if (mode === 'BUY') product.stock = parseInt(product.stock || 0) + diff;
+                await db.products.put(product);
+                groupedItems[code].stock = product.stock; // อัปเดตหน้าจอ
             }
             calculateTotal(); refreshList();
         }
 
-        function removeItem(code){ 
-            let data = JSON.parse(localStorage.getItem('productData')||'{}');
+        async function removeItem(code){ 
             let mode = localStorage.getItem('zenMode') || 'SELL';
-            if(data[code]) {
-                if(mode === 'SELL') data[code].stock.val = parseInt(data[code].stock.val || 0) + groupedItems[code].qty;
-                else if(mode === 'BUY') data[code].stock.val = parseInt(data[code].stock.val || 0) - groupedItems[code].qty;
-                localStorage.setItem('productData', JSON.stringify(data));
+            let product = await db.products.get(code);
+            
+            if(product) {
+                if(mode === 'SELL') product.stock = parseInt(product.stock || 0) + groupedItems[code].qty;
+                else if(mode === 'BUY') product.stock = parseInt(product.stock || 0) - groupedItems[code].qty;
+                await db.products.put(product);
             }
             delete groupedItems[code]; 
             refreshList(); calculateTotal(); 
@@ -226,28 +286,28 @@
         function autoScrollToBottom(){ const list = document.getElementById("itemList"); list.scrollTop = list.scrollHeight; }
         function refreshList(){ const i=document.getElementById("itemList"); i.innerHTML=""; Object.values(groupedItems).forEach(x=>renderItem(x)); autoScrollToBottom(); }
         
-        function cancelBasket(){ 
+        async function cancelBasket(){ 
             if(confirm("ยกเลิกทั้งตะกร้าใช่ไหม?")){ 
-                let data = JSON.parse(localStorage.getItem('productData')||'{}');
                 let mode = localStorage.getItem('zenMode') || 'SELL';
-                Object.values(groupedItems).forEach(item => {
-                    if(data[item.code]) {
-                        if(mode === 'SELL') data[item.code].stock.val = parseInt(data[item.code].stock.val || 0) + item.qty;
-                        else if(mode === 'BUY') data[item.code].stock.val = parseInt(data[item.code].stock.val || 0) - item.qty;
+                for (let code in groupedItems) {
+                    let product = await db.products.get(code);
+                    if(product) {
+                        if(mode === 'SELL') product.stock = parseInt(product.stock || 0) + groupedItems[code].qty;
+                        else if(mode === 'BUY') product.stock = parseInt(product.stock || 0) - groupedItems[code].qty;
+                        await db.products.put(product);
                     }
-                });
-                localStorage.setItem('productData', JSON.stringify(data));
+                }
                 groupedItems={}; refreshList(); calculateTotal(); 
             } 
         }
         
         function calculateTotal(){
-            let t=0, d=JSON.parse(localStorage.getItem('productData')||'{}');
+            let t=0;
             let mode = localStorage.getItem('zenMode') || 'SELL';
             let count = Object.keys(groupedItems).length;
             Object.values(groupedItems).forEach(i=>{
-                if(mode === 'SELL'){ let p = d[i.code] && d[i.code].price ? d[i.code].price.val : 0; t += (parseFloat(p) * i.qty) || 0; }
-                else if(mode === 'BUY'){ let c = d[i.code] && d[i.code].cost ? d[i.code].cost.val : 0; t += (parseFloat(c) * i.qty) || 0; }
+                if(mode === 'SELL') t += (parseFloat(i.price) * i.qty) || 0;
+                else if(mode === 'BUY') t += (parseFloat(i.cost) * i.qty) || 0;
             });
             const btn = document.getElementById("btnFinish");
             if(mode === 'CHECK'){ btn.innerText = "(" + count + ") ตรวจสอบรายการ"; }
@@ -256,46 +316,64 @@
             return t; 
         }
 
-        function updateCellData(c,f,v){
-            let a=JSON.parse(localStorage.getItem('productData')||'{}');
-            if(!a[c])a[c]={price:{val:0},cost:{val:0},stock:{val:0},supplier:{val:''}};
-            a[c][f]={val:v};
-            localStorage.setItem('productData',JSON.stringify(a));
-            if(f==='price'||f==='cost') calculateTotal();
+        async function updateLocalItem(code, field, value) {
+            groupedItems[code][field] = value;
+            let product = await db.products.get(code);
+            if(!product) product = {code: code, price: 0, cost: 0, stock: 0, supplier: ''};
+            product[field] = value;
+            await db.products.put(product);
+            if(field === 'price' || field === 'cost') calculateTotal();
         }
 
-        function getCellData(c,f,d){ let a=JSON.parse(localStorage.getItem('productData')||'{}'); return(a[c]&&a[c][f])?a[c][f].val:d }
-        
         function renderItem(i){
             let l=document.createElement("li");l.className="item-row";
-            let p=getCellData(i.code,'price',0), c=getCellData(i.code,'cost',0), s=getCellData(i.code,'stock',0), st=(parseFloat(c)>0)?"cost-filled":"cost-empty";
+            let st=(parseFloat(i.cost)>0)?"cost-filled":"cost-empty";
             let mode = localStorage.getItem('zenMode') || 'SELL';
             let costClass = (mode === 'SELL') ? 'hidden-cost' : 'visible-cost';
             
             l.innerHTML=`<img src="${i.img}"><span class="barcode-text">${i.code}</span>
             <input type="number" class="item-input" value="${i.qty}" onfocus="this.select()" onchange="changeQty('${i.code}', this.value)">
-            <input type="number" class="item-input" value="${p}" onfocus="this.select()" onchange="updateCellData('${i.code}','price',this.value);calculateTotal()">
-            <input type="number" class="item-input cost-input ${costClass} ${st}" value="${c}" onfocus="this.select()" onclick="toggleCostVisibility(this)" onchange="updateCellData('${i.code}','cost',this.value);calculateTotal()">
-            <input type="number" class="item-input" value="${s}" onfocus="this.select()" onchange="updateCellData('${i.code}','stock',this.value)">
-            <input type="text" class="item-input" maxlength="1" value="${getCellData(i.code,'supplier','').toString().substring(0,1)}" onfocus="this.select()" onchange="updateCellData('${i.code}','supplier',this.value)">
+            <input type="number" class="item-input" value="${i.price}" onfocus="this.select()" onchange="updateLocalItem('${i.code}','price',this.value)">
+            <input type="number" class="item-input cost-input ${costClass} ${st}" value="${i.cost}" onfocus="this.select()" onclick="toggleCostVisibility(this)" onchange="updateLocalItem('${i.code}','cost',this.value)">
+            <input type="number" class="item-input" value="${i.stock}" onfocus="this.select()" onchange="updateLocalItem('${i.code}','stock',this.value)">
+            <input type="text" class="item-input" maxlength="1" value="${(i.supplier||'').toString().substring(0,1)}" onfocus="this.select()" onchange="updateLocalItem('${i.code}','supplier',this.value)">
             <button class="btn-delete" onclick="removeItem('${i.code}')">X</button>`;
             document.getElementById("itemList").appendChild(l);
         }
 
         function toggleCostVisibility(el){el.classList.toggle('hidden-cost');el.classList.toggle('visible-cost')}
         
+        // 🌟 3. ค้นหาสินค้าจาก IndexedDB แบบสายฟ้าแลบ พร้อมระบบแจ้งเตือนสต็อกต่ำ 🌟
         async function onScanSuccess(d){
             new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
             let mode = localStorage.getItem('zenMode') || 'SELL';
             
             if(groupedItems[d]){ 
-                changeQty(d, parseInt(groupedItems[d].qty) + 1);
+                await changeQty(d, parseInt(groupedItems[d].qty) + 1);
             } else { 
-                groupedItems[d] = {code:d, img:takeSnapshot(), qty:1}; 
-                let data = JSON.parse(localStorage.getItem('productData')||'{}');
-                if (mode === 'SELL') { if(data[d]){ data[d].stock.val = parseInt(data[d].stock.val || 0) - 1; localStorage.setItem('productData', JSON.stringify(data)); } }
-                else if (mode === 'BUY') { if(data[d]){ data[d].stock.val = parseInt(data[d].stock.val || 0) + 1; localStorage.setItem('productData', JSON.stringify(data)); } }
+                let product = await db.products.get(d); // ดึงจากเครื่อง!
+                let p = product ? product.price : 0;
+                let c = product ? product.cost : 0;
+                let s = product ? product.stock : 0;
+                let sup = product ? product.supplier : '';
+
+                groupedItems[d] = {code:d, img:takeSnapshot(), qty:1, price: p, cost: c, stock: s, supplier: sup}; 
+                
+                if (product) {
+                    if (mode === 'SELL') product.stock = parseInt(product.stock || 0) - 1;
+                    else if (mode === 'BUY') product.stock = parseInt(product.stock || 0) + 1;
+                    await db.products.put(product);
+                    groupedItems[d].stock = product.stock;
+                }
                 refreshList(); calculateTotal(); 
+            }
+
+            // 📣 เพิ่มเงื่อนไขตรวจสอบและส่งเสียงเตือนสต็อกต่ำ 📣
+            if (mode === 'SELL') {
+                let currentStock = parseInt(groupedItems[d].stock) || 0;
+                if (currentStock <= 5) {
+                    speakText("สินค้านี้ใกล้หมดครับ เหลือ " + currentStock + " ชิ้น");
+                }
             }
 
             setTimeout(() => {
@@ -348,7 +426,8 @@
             return canvas.toDataURL('image/jpeg', 0.6); 
         }
 
-        function finishSale() { 
+        // 🌟 4. ระบบบันทึกบิลและเข้าคิวเมื่อออฟไลน์ 🌟
+        async function finishSale() { 
             if(Object.keys(groupedItems).length === 0) return showStatus("ยังไม่มีสินค้าในตะกร้า!"); 
             let mode = localStorage.getItem('zenMode') || 'SELL';
             let totalToSpeak = calculateTotal();
@@ -356,34 +435,87 @@
 
             let allItems = Object.values(groupedItems);
             let itemsToSync = allItems.map(i => {
-                return { 
-                    code: i.code, qty: i.qty, price: getCellData(i.code, 'price', 0), 
-                    cost: getCellData(i.code, 'cost', 0), supplier: getCellData(i.code, 'supplier', ''), stock: getCellData(i.code, 'stock', 0)
-                };
+                return { code: i.code, qty: i.qty, price: i.price, cost: i.cost, supplier: i.supplier, stock: i.stock };
             });
             let batch1 = allItems.slice(0, 16); let batch2 = allItems.slice(16, 32);
+            
+            // สร้างรูป Collage
+            let collage1 = await createCollage(batch1); 
+            let collage2 = await createCollage(batch2);
+
+            // เตรียมข้อมูลบิล
+            let billData = { mode: mode, items: itemsToSync, collage1: collage1, collage2: collage2, timestamp: Date.now() };
 
             groupedItems = {}; refreshList(); calculateTotal();
-            showStatus("⏳ กำลังบันทึกบิล...");
-
-            setTimeout(() => {
-                (async () => {
-                    try {
-                        let collage1 = await createCollage(batch1); let collage2 = await createCollage(batch2);
-                        fetch(GOOGLE_SCRIPT_URL, {
-                            method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ mode: mode, items: itemsToSync, collage1: collage1, collage2: collage2 })
-                        });
-                    } catch(err) { console.error("Error:", err); }
-                })(); 
-            }, 500); 
+            
+            // บันทึกลงคิวก่อนเสมอ!
+            await db.pendingSales.add(billData);
+            
+            // กระตุ้นระบบให้พยายามส่งข้อมูล
+            syncPendingSales();
         }
+
+        // 🌟 5. ฟังก์ชันไล่ซิงค์ข้อมูลขึ้น Google Sheet อัตโนมัติ 🌟
+        async function syncPendingSales() {
+            let pendingCount = await db.pendingSales.count();
+            const badge = document.getElementById('syncBadge');
+            
+            if (pendingCount > 0) {
+                badge.style.display = 'block';
+                badge.innerText = `รอยืนยัน ${pendingCount}`;
+            } else {
+                badge.style.display = 'none';
+            }
+
+            if (!navigator.onLine || pendingCount === 0) return; // ถ้าออฟไลน์ หรือไม่มีคิว ก็จบ
+
+            showStatus("⏳ กำลังซิงค์บิลที่ค้างอยู่...");
+            
+            // ดึงบิลที่ค้างมาส่งทีละบิล
+            let pendingBills = await db.pendingSales.toArray();
+            
+            for (let bill of pendingBills) {
+                try {
+                    let res = await fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(bill)
+                    });
+                    
+                    // เมื่อส่งผ่าน ให้ลบออกจากคิว
+                    await db.pendingSales.delete(bill.id);
+                    
+                } catch(err) {
+                    console.error("Sync failed for bill:", bill.id);
+                    break; // ถ้าพังแปลว่าเน็ตมีปัญหา ให้หยุดลูปไว้ก่อน
+                }
+            }
+            
+            // อัปเดตตัวเลขแจ้งเตือนอีกครั้ง
+            pendingCount = await db.pendingSales.count();
+            if(pendingCount === 0) {
+                badge.style.display = 'none';
+                showStatus("✅ ซิงค์ข้อมูลครบแล้ว!");
+            }
+        }
+
+        // ดักจับเหตุการณ์เมื่อเครื่องกลับมาต่อเน็ตได้
+        window.addEventListener('online', () => {
+            showStatus("🌐 กลับมาออนไลน์แล้ว! กำลังซิงค์ข้อมูล...");
+            syncPendingSales(); // สั่งให้ยิงข้อมูลขึ้นทันที
+        });
+
+        window.addEventListener('offline', () => {
+            showStatus("📵 ขาดการเชื่อมต่อ! สลับเป็นโหมดออฟไลน์");
+        });
 
         window.onload = async () => {
             let m = localStorage.getItem('zenMode') || 'SELL'; 
             document.getElementById('modeSelect').value = m; 
             applyModeColor(m);
+            
             await loadSheetData(); 
+            syncPendingSales(); // ตรวจสอบคิวเผื่อมีค้างจากรอบที่แล้ว
+
             html5QrcodeScanner = new Html5QrcodeScanner("reader", {
                 fps: 10, qrbox: {width: 200, height: 60}, facingMode: "environment",
                 formatsToSupport: [Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8, Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.QR_CODE]
