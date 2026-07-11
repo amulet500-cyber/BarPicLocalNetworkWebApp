@@ -10,8 +10,8 @@ body { margin: 0; padding: 0; background: #000; height: 100vh; overflow: hidden;
 #reader button { padding: 6px 12px!important; font-size: 1.3em!important; border: 1px solid #f1c40f!important; border-radius: 5px!important; color: #f1c40f!important; background: rgba(50,50,50,0.5)!important; }
 #reader__dashboard_section span, #reader__dashboard_section select { color: #f1c40f!important; }
 #reader__dashboard_section select { background: rgba(0,0,0,0.5)!important; border: 1px solid #f1c40f!important; }
-#cart { position: fixed; top: 48vh; bottom: 0; left: 0; width: 100%; background: rgba(255,255,255,0.15); border-radius: 15px 15px 0 0; padding: 8px; z-index: 300; box-sizing: border-box; display: flex; flex-direction: column; }
 
+#cart { position: fixed; top: 48vh; bottom: 0; left: 0; width: 100%; background: rgba(255,255,255,0.15); border-radius: 15px 15px 0 0; padding: 8px; z-index: 300; box-sizing: border-box; display: flex; flex-direction: column; }
 .cart-header, .item-row { display: grid; grid-template-columns: 26px 1.5fr 35px 37px 37px 37px 26px 24px; gap: 3px; align-items: center; padding: 4px 0; border-bottom: 1px solid #777; font-size: 0.58em; color: #fff; }
 .cart-header { border-bottom: 1px solid #aaa; margin-bottom: 4px; font-weight: 700; text-align: center; font-size: 0.64em; }
 #itemList { flex-grow: 1; overflow-y: auto; list-style-type: none; padding: 0; margin: 0 0 4px 0; }
@@ -24,33 +24,35 @@ body { margin: 0; padding: 0; background: #000; height: 100vh; overflow: hidden;
 .visible-cost { color: #fff!important; background: rgba(0,0,0,0.5)!important; border: 1px solid #f1c40f!important; }
 .cost-filled { border: 1px solid rgba(201, 204, 46, 0.8)!important; }
 .cost-empty { border: 1px solid rgba(231, 73, 56, 0.8)!important; }
+
 .btn-delete { background: #e74c3c; color: #fff; border: none; border-radius: 3px; padding: 3px; font-weight: 700; cursor: pointer; }
-.btn-finish { width: 70%; padding: 10px; font-size: 1.1em; color: #fff; border: none; border-radius: 7px; font-weight: 700; transition: background 0.3s; }
-.btn-cancel { width: 28%; padding: 10px; font-size: 1em; background-color: #c0392b; color: #fff; border: none; border-radius: 7px; font-weight: 700; }
+
+.bottom-bar { display: flex; gap: 5px; width: 100%; }
+#btnCancelBtn { flex: 0 0 22%; padding: 10px; font-size: 1em; background-color: #c0392b; color: #fff; border: none; border-radius: 7px; font-weight: 700; }
+.btn-finish { flex: 1; padding: 10px; font-size: 1.1em; color: #fff; border: none; border-radius: 7px; font-weight: 700; transition: background 0.3s; }
+#btnNewBarcode { display: none; flex: 0 0 25%; background: #9b59b6; color: #fff; border: none; border-radius: 7px; padding: 10px; font-size: 0.95em; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+
 #statusMessage { color: #f1c40f; font-weight: 700; text-align: center; height: 18px; margin-bottom: 4px; font-size: 0.8em; }
 
-/* เพิ่มเติมสำหรับเมนูใหม่ */
-#headerBar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px;
-    background: #2c3e50;
-    color: white;
-}
+#syncBadge { display: none; background: #e74c3c; color: white; padding: 2px 5px; border-radius: 10px; font-size: 0.7em; margin-left: 5px; animation: blink 1.5s infinite; }
+@keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
-#reportMenu {
-    padding: 5px;
-    border-radius: 5px;
-    background: #ecf0f1;
-    border: none;
-    font-size: 0.9em;
-    max-width: 120px; /* จำกัดความกว้างไม่ให้บังส่วนอื่น */
-}
+#printArea { display: none; position: fixed; top: 35px; left: 0; width: 100%; height: 45vh; z-index: 250; background: #fff; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+.preview-container { text-align: center; font-family: sans-serif; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #000; }
+.preview-title { font-size: 16px; margin-bottom: 10px; font-weight: bold; color: #e67e22; }
+.preview-img { width: auto; height: 150px; object-fit: cover; border: 2px dashed #000; border-radius: 10px; margin-bottom: 10px; }
+.preview-hint { font-size: 12px; margin-top: 5px; color: #555; }
 
-/* ซ่อนเมนูตอนพิมพ์บิล */
 @media print {
-    #headerBar, #reader, #sleepOverlay, #cart .btn-cancel, #cart .btn-finish, #reportMenu {
+    /* ซ่อนทุกอย่างที่อยู่ใน body ยกเว้น printArea */
+    body > *:not(#printArea) {
         display: none !important;
+    }
+    #printArea {
+        display: block !important;
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
     }
 }
