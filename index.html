@@ -3,10 +3,11 @@
 <head>
     <title>สแกนสินค้า ศิษย์พี่ - Offline First Sync</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- นำเข้าไลบรารีสร้างบาร์โค้ดสำหรับการพิมพ์ -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <script src="https://unpkg.com/dexie/dist/dexie.js"></script>
     <script src="https://unpkg.com/html5-qrcode"></script>
     <style>
-        /* CSS เดิมของศิษย์พี่ */
         body { margin: 0; padding: 0; background: #000; height: 100vh; overflow: hidden; font-family: sans-serif; }
         #headerBar { position: fixed; top: 0; left: 0; width: 100%; z-index: 500; display: flex; justify-content: space-between; align-items: center; padding: 5px 10px; color: #fff; height: 35px; box-sizing: border-box; transition: background 0.3s; }
         #modeSelect { background: rgba(0,0,0,0.5); color: #fff; border: 1px solid #fff; padding: 2px; font-size: 0.9em; border-radius: 4px; }
@@ -19,8 +20,8 @@
         #reader button { padding: 6px 12px!important; font-size: 1.3em!important; border: 1px solid #f1c40f!important; border-radius: 5px!important; color: #f1c40f!important; background: rgba(50,50,50,0.5)!important; }
         #reader__dashboard_section span, #reader__dashboard_section select { color: #f1c40f!important; }
         #reader__dashboard_section select { background: rgba(0,0,0,0.5)!important; border: 1px solid #f1c40f!important; }
+        
         #cart { position: fixed; top: 48vh; bottom: 0; left: 0; width: 100%; background: rgba(255,255,255,0.15); border-radius: 15px 15px 0 0; padding: 8px; z-index: 300; box-sizing: border-box; display: flex; flex-direction: column; }
-
         .cart-header, .item-row { display: grid; grid-template-columns: 26px 1.5fr 35px 37px 37px 37px 26px 24px; gap: 3px; align-items: center; padding: 4px 0; border-bottom: 1px solid #777; font-size: 0.58em; color: #fff; }
         .cart-header { border-bottom: 1px solid #aaa; margin-bottom: 4px; font-weight: 700; text-align: center; font-size: 0.64em; }
         #itemList { flex-grow: 1; overflow-y: auto; list-style-type: none; padding: 0; margin: 0 0 4px 0; }
@@ -33,22 +34,46 @@
         .visible-cost { color: #fff!important; background: rgba(0,0,0,0.5)!important; border: 1px solid #f1c40f!important; }
         .cost-filled { border: 1px solid rgba(201, 204, 46, 0.8)!important; }
         .cost-empty { border: 1px solid rgba(231, 73, 56, 0.8)!important; }
+        
         .btn-delete { background: #e74c3c; color: #fff; border: none; border-radius: 3px; padding: 3px; font-weight: 700; cursor: pointer; }
-        .btn-finish { width: 70%; padding: 10px; font-size: 1.1em; color: #fff; border: none; border-radius: 7px; font-weight: 700; transition: background 0.3s; }
-        .btn-cancel { width: 28%; padding: 10px; font-size: 1em; background-color: #c0392b; color: #fff; border: none; border-radius: 7px; font-weight: 700; }
+        
+        /* ปรับแต่งปุ่มด้านล่าง */
+        .bottom-bar { display: flex; gap: 5px; width: 100%; }
+        #btnCancelBtn { flex: 0 0 22%; padding: 10px; font-size: 1em; background-color: #c0392b; color: #fff; border: none; border-radius: 7px; font-weight: 700; }
+        .btn-finish { flex: 1; padding: 10px; font-size: 1.1em; color: #fff; border: none; border-radius: 7px; font-weight: 700; transition: background 0.3s; }
+        #btnNewBarcode { display: none; flex: 0 0 25%; background: #9b59b6; color: #fff; border: none; border-radius: 7px; padding: 10px; font-size: 0.95em; font-weight: bold; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+
         #statusMessage { color: #f1c40f; font-weight: 700; text-align: center; height: 18px; margin-bottom: 4px; font-size: 0.8em; }
         
-        /* 🌟 CSS เพิ่มเติมสำหรับป้ายแจ้งเตือน Offline */
         #syncBadge { display: none; background: #e74c3c; color: white; padding: 2px 5px; border-radius: 10px; font-size: 0.7em; margin-left: 5px; animation: blink 1.5s infinite; }
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
+        /* จัดการพื้นที่แสดงพรีวิวภาพ */
+        #printArea { display: none; position: fixed; top: 35px; left: 0; width: 100%; height: 45vh; z-index: 250; background: #fff; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .preview-container { text-align: center; font-family: sans-serif; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #000; }
+        .preview-title { font-size: 16px; margin-bottom: 10px; font-weight: bold; color: #e67e22; }
+        .preview-img { width: auto; height: 150px; object-fit: cover; border: 2px dashed #000; border-radius: 10px; margin-bottom: 10px; }
+        .preview-hint { font-size: 12px; margin-top: 5px; color: #555; }
+
         @media print {
+            body { background: white !important; }
             body * { visibility: hidden; } 
-            #printArea, #printArea * { visibility: visible; } 
-            #printArea { position: absolute; left: 0; top: 0; width: 100%; margin: 0; font-family: monospace; }
+            #printArea, #printArea * { visibility: visible !important; } 
+            #printArea { 
+                display: block !important; 
+                position: fixed !important; 
+                left: 0 !important; 
+                top: 0 !important; 
+                width: 100% !important; 
+                height: 100% !important; 
+                margin: 0 !important; 
+                padding: 0 !important; 
+                z-index: 9999 !important; 
+            }
+            .preview-title { display: none !important; } 
+            .preview-img { height: auto !important; max-width: 90% !important; }
+            @page { size: A6 portrait; margin: 5mm; }
         }
-        #printArea { display: none; }
-        @media print { #printArea { display: block; } }
     </style>
 </head>
 <body onclick="wakeScanner()">
@@ -56,15 +81,17 @@
     <div id="printArea"></div>
 
     <div id="headerBar">
-        <select id="modeSelect" onchange="changeMode(this.value)">
-            <option value="SELL">ขาย</option>
-            <option value="BUY">ซื้อ</option>
-            <option value="CHECK">เช็ค</option>
-        </select>
+        <div style="display:flex; align-items:center;">
+            <select id="modeSelect" onchange="changeMode(this.value)">
+                <option value="SELL">ขาย</option>
+                <option value="BUY">ซื้อ</option>
+                <option value="CHECK">เช็ค</option>
+            </select>
+        </div>
 
-        <select id="reportMenu" onchange="handleMenuAction(this.value)" style="padding: 5px; border-radius: 5px; max-width: 130px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid #fff;">
-            <option value="" disabled selected>📜 เมนูและส่ง</option>
-            <option value="force-sync" style="background:#2c3e50;">📥 อัปเดตข้อมูลสินค้า</option>
+        <select id="reportMenu" onchange="handleMenuAction(this.value)" style="padding: 5px; border-radius: 5px; max-width: 90px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid #fff;">
+            <option value="" disabled selected>📜 เมนู</option>
+            <option value="force-sync" style="background:#2c3e50;">📥 อัปเดตข้อมูล</option>
             <optgroup label="📋 พิมพ์">
                 <option value="print-cart">พิมพ์ ตะกร้าสินค้า</option>
                 <option value="print-today">พิมพ์ ยอดวันนี้</option>
@@ -78,6 +105,7 @@
             </optgroup>
         </select>
         <div style="display:flex; align-items:center;">
+            <div id="versionTag" style="font-size: 0.7em; color: #f1c40f; margin-right: 5px;"></div>
             <div id="clock">--:--:--</div>
             <div id="syncBadge">รอยืนยัน 0</div>
         </div>
@@ -91,20 +119,22 @@
         <div class="cart-header"><span>รูป</span><span>บาร์โค้ด</span><span>จำนวน</span><span>ราคา</span><span>ทุน</span><span>สต็อก</span><span>ร้าน</span><span>ลบ</span></div>
         <ul id="itemList"></ul>
         <div id="statusMessage"></div>
-        <div style="display:flex;gap:3px">
-            <button class="btn-cancel" onclick="cancelBasket()">ยกเลิก</button>
+        
+        <div class="bottom-bar">
+            <button id="btnCancelBtn" onclick="cancelBasket()">ยกเลิก</button>
             <button id="btnFinish" class="btn-finish" onclick="finishSale()">ชำระเงิน</button>
+            <button id="btnNewBarcode" onclick="showBarcodePreview(event)">📸 ถ่าย</button>
         </div>
     </div>
 
     <script>
+        const APP_VERSION = "v.1.4"; // 🌟 อัปเดตเวอร์ชัน
         const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycg8de6efutKRLsoT8s6AQh3eJaEGmSOUV4kP4jhO9iUMimOzT3tbtcQcJaZArsyzb/exec";
 
-        // 🌟 1. ตั้งค่าฐานข้อมูล Dexie.js (Offline-First) 🌟
         const db = new Dexie("ShopDatabase");
         db.version(1).stores({
-            products: 'code, price, cost, stock, supplier', // ตารางสินค้า (code เป็น Primary Key)
-            pendingSales: '++id, mode, items, collage1, collage2, timestamp' // ตารางคิวบิลขาย (id อัตโนมัติ)
+            products: 'code, price, cost, stock, supplier',
+            pendingSales: '++id, mode, items, collage1, collage2, timestamp'
         });
 
         let groupedItems={}, html5QrcodeScanner, idleTimer, isScanning=true;
@@ -122,9 +152,16 @@
         function applyModeColor(mode){
             const header = document.getElementById('headerBar');
             const btn = document.getElementById('btnFinish');
+            const btnNewBarcode = document.getElementById('btnNewBarcode');
             const colors = {'SELL':'#27ae60', 'BUY':'#f1c40f', 'CHECK':'#3498db'};
+            
             header.style.backgroundColor = colors[mode] || '#27ae60';
             btn.style.backgroundColor = colors[mode] || '#27ae60';
+            
+            btnNewBarcode.style.display = (mode === 'CHECK') ? 'block' : 'none';
+            
+            // รีเซ็ตสถานะพรีวิวเสมอกันเหนียวเวลาย้ายโหมด
+            cancelPreview(null, true);
         }
 
         function changeMode(m){
@@ -135,12 +172,114 @@
             refreshList();
         }
 
+        // 🌟 ฟังก์ชันใหม่: แสดงพรีวิวรูปและบาร์โค้ด 🌟
+        function showBarcodePreview(event) {
+            if(event) event.stopPropagation();
+            
+            const v = document.getElementsByTagName('video')[0];
+            if (!v || v.videoWidth === 0) {
+                return showStatus("⚠️ ไม่พบกล้อง กรุณารอให้กล้องทำงานก่อน");
+            }
+
+            // แคปภาพ
+            const c = document.createElement('canvas');
+            c.width = 800; c.height = 800;
+            const ctx = c.getContext('2d');
+            const size = Math.min(v.videoWidth, v.videoHeight);
+            const xOffset = (v.videoWidth - size) / 2;
+            const yOffset = (v.videoHeight - size) / 2;
+            
+            ctx.drawImage(v, xOffset, yOffset, size, size, 0, 0, 800, 800);
+            const highResImg = c.toDataURL('image/jpeg', 0.8);
+
+            // สร้างบาร์โค้ด
+            const randomCode = "99" + Math.floor(10000000000 + Math.random() * 90000000000).toString().substring(0, 11);
+            db.products.put({ code: randomCode, price: 0, cost: 0, stock: 0, supplier: 'NEW' });
+
+            // แสดงหน้าจอพรีวิว
+            const printArea = document.getElementById("printArea");
+            printArea.style.display = "block";
+            printArea.innerHTML = `
+                <div class="preview-container">
+                    <div class="preview-title">👀 ตรวจสอบภาพก่อนพิมพ์</div>
+                    <img src="${highResImg}" class="preview-img">
+                    <div><svg id="newBarcodeSvg"></svg></div>
+                    <div class="preview-hint">(นำไปแปะที่เคาน์เตอร์คิดเงิน)</div>
+                </div>
+            `;
+
+            // วาดบาร์โค้ดลงใน SVG ที่แสดงผลอยู่บนจอ (แก้ปัญหาหน้าขาว)
+            if (typeof JsBarcode !== 'undefined') {
+                JsBarcode("#newBarcodeSvg", randomCode, {
+                    format: "CODE128", width: 2.5, height: 60, displayValue: true, fontSize: 20, margin: 10
+                });
+            } else {
+                document.getElementById("newBarcodeSvg").outerHTML = `<h1 style="letter-spacing: 3px;">${randomCode}</h1>`;
+            }
+
+            html5QrcodeScanner.pause();
+            showStatus("รอการยืนยันพิมพ์...");
+            speakText("ตรวจสอบรูปภาพ ถ้าชัดเจนแล้วกดพิมพ์ได้เลยครับ");
+
+            // เปลี่ยนปุ่มเป็น "พิมพ์" และ "ยกเลิก"
+            const btnNew = document.getElementById("btnNewBarcode");
+            btnNew.innerHTML = "🖨️ พิมพ์";
+            btnNew.style.background = "#e67e22"; // สีส้ม
+            btnNew.onclick = executePrint;
+
+            const btnCancel = document.getElementById("btnCancelBtn");
+            btnCancel.innerHTML = "❌ ยกเลิก";
+            btnCancel.onclick = cancelPreview;
+        }
+
+        // 🌟 ฟังก์ชันใหม่: สั่งพิมพ์ 🌟
+        function executePrint(event) {
+            if(event) event.stopPropagation();
+            showStatus("กำลังเตรียมสั่งพิมพ์...");
+            
+            // เพิ่มดีเลย์ 300ms เพื่อให้แน่ใจว่าหน้าจอวาดเสร็จก่อนสั่งพิมพ์
+            setTimeout(() => {
+                window.print();
+                
+                // หลังจากพิมพ์เสร็จ (หรือปิดหน้าต่างพิมพ์) ให้กลับสู่โหมดปกติ
+                setTimeout(() => {
+                    cancelPreview();
+                }, 1000);
+            }, 300);
+        }
+
+        // 🌟 ฟังก์ชันใหม่: ยกเลิกพรีวิวและกลับไปสแกน 🌟
+        function cancelPreview(event, isSilent = false) {
+            if(event) event.stopPropagation();
+            
+            const printArea = document.getElementById("printArea");
+            if (printArea.style.display === "block") {
+                printArea.style.display = "none";
+                printArea.innerHTML = "";
+                
+                // คืนค่าปุ่มกลับมาเหมือนเดิม
+                const btnNew = document.getElementById("btnNewBarcode");
+                btnNew.innerHTML = "📸 ถ่าย";
+                btnNew.style.background = "#9b59b6";
+                btnNew.onclick = showBarcodePreview;
+                
+                const btnCancel = document.getElementById("btnCancelBtn");
+                btnCancel.innerHTML = "ยกเลิก";
+                btnCancel.onclick = cancelBasket;
+                
+                if (isScanning && typeof html5QrcodeScanner !== 'undefined') {
+                    html5QrcodeScanner.resume();
+                }
+                if (!isSilent) showStatus("✅ พร้อมสแกนต่อ");
+            }
+        }
+
         async function handleMenuAction(action) {
             if (!action) return;
             document.getElementById("reportMenu").selectedIndex = 0; 
             
             if (action === 'force-sync') {
-                await loadSheetData(); // ดึงข้อมูลใหม่ลง Dexie
+                await loadSheetData(); 
             } else if (action === 'print-cart') {
                 printCartReceipt();
             } else if (action.startsWith('print-')) {
@@ -153,6 +292,7 @@
                         document.getElementById("printArea").innerHTML = result.html;
                         window.print();
                         showStatus("พร้อมพิมพ์");
+                        setTimeout(() => document.getElementById("printArea").innerHTML = "", 1000); 
                     }
                 } catch(err) { showStatus("ดึงข้อมูลล้มเหลว"); }
             } else if (action.startsWith('tg-')) {
@@ -177,7 +317,8 @@
             let n = new Date();
             let timeStr = n.toLocaleDateString('th-TH') + " " + n.toLocaleTimeString('th-TH');
             
-            let html = `<h3 style="text-align:center; margin-bottom:5px;">ใบรายการสินค้า</h3>`;
+            let html = `<div style="font-family: sans-serif; padding: 10px; background: white; color: black; min-height: 100vh;">`;
+            html += `<h3 style="text-align:center; margin-bottom:5px;">ใบรายการสินค้า</h3>`;
             html += `<p style="text-align:center; margin:0 0 10px 0; font-size:12px;">เวลา: ${timeStr}</p><hr style="border-top:1px dashed #000;">`;
             html += `<table style="width:100%; border-collapse:collapse; font-size:14px;"><tr><th style="text-align:left;">รายการ</th><th style="text-align:right;">จน.</th><th style="text-align:right;">ราคา</th><th style="text-align:right;">รวม</th></tr>`;
             
@@ -186,14 +327,15 @@
                 let p = i.price || 0;
                 let sum = p * i.qty;
                 total += sum;
-                html += `<tr><td style="padding-top:5px;">${i.code}</td><td style="text-align:right;">${i.qty}</td><td style="text-align:right;">${p}</td><td style="text-align:right;">${sum}</td></tr>`;
+                html += `<tr><td style="padding-top:5px; word-break: break-all;">${i.code}</td><td style="text-align:right;">${i.qty}</td><td style="text-align:right;">${p}</td><td style="text-align:right;">${sum}</td></tr>`;
             });
             html += `</table><hr style="border-top:1px dashed #000;">`;
             html += `<h3 style="text-align:right;">ยอดรวมสุทธิ: ${total.toLocaleString()} บาท</h3>`;
-            html += `<p style="text-align:center; font-size:12px;">ขอบคุณที่ใช้บริการ</p>`;
+            html += `<p style="text-align:center; font-size:12px;">ขอบคุณที่ใช้บริการ</p></div>`;
             
             document.getElementById("printArea").innerHTML = html;
             window.print();
+            setTimeout(() => document.getElementById("printArea").innerHTML = "", 1000);
         }
 
         function resetIdleTimer(){clearTimeout(idleTimer); idleTimer=setTimeout(sleepScanner,300000)}
@@ -215,11 +357,11 @@
             const dateStr = n.toLocaleDateString('th-TH',{weekday:'short', day:'numeric', month:'short', year:'numeric'});
             const timeStr = n.toLocaleTimeString('th-TH',{hour:'2-digit', minute:'2-digit', second:'2-digit'});
             document.getElementById('clock').innerText = dateStr + ' ' + timeStr;
+            document.getElementById('versionTag').innerText = APP_VERSION;
         }, 1000);
 
         function showStatus(m){const s=document.getElementById("statusMessage");s.innerText=m;setTimeout(()=>{s.innerText=""},3000)}
         
-        // 🌟 2. โหลดข้อมูลลง Dexie Database 🌟
         async function loadSheetData() {
             if(!navigator.onLine) {
                 showStatus("ออฟไลน์: ใช้ข้อมูลเดิมในเครื่อง");
@@ -233,18 +375,11 @@
                 
                 let productArray = [];
                 for (const [code, info] of Object.entries(data)) {
-                    productArray.push({
-                        code: code,
-                        price: info.price,
-                        cost: info.cost,
-                        stock: info.stock,
-                        supplier: info.supplier
-                    });
+                    productArray.push({ code: code, price: info.price, cost: info.cost, stock: info.stock, supplier: info.supplier });
                 }
                 
-                await db.products.clear(); // ล้างของเก่า
-                await db.products.bulkPut(productArray); // เทข้อมูลใหม่ลงไป (เร็วมาก)
-                
+                await db.products.clear(); 
+                await db.products.bulkPut(productArray); 
                 showStatus("✅ อัปเดตฐานข้อมูลเรียบร้อย");
             } catch (error) { 
                 showStatus("⚠️ โหลดข้อมูลล้มเหลว ใช้ของเดิมในเครื่อง"); 
@@ -265,7 +400,7 @@
                 if (mode === 'SELL') product.stock = parseInt(product.stock || 0) - diff;
                 else if (mode === 'BUY') product.stock = parseInt(product.stock || 0) + diff;
                 await db.products.put(product);
-                groupedItems[code].stock = product.stock; // อัปเดตหน้าจอ
+                groupedItems[code].stock = product.stock; 
             }
             calculateTotal(); refreshList();
         }
@@ -343,7 +478,6 @@
 
         function toggleCostVisibility(el){el.classList.toggle('hidden-cost');el.classList.toggle('visible-cost')}
         
-        // 🌟 3. ค้นหาสินค้าจาก IndexedDB แบบสายฟ้าแลบ พร้อมระบบแจ้งเตือนสต็อกต่ำ 🌟
         async function onScanSuccess(d){
             new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
             let mode = localStorage.getItem('zenMode') || 'SELL';
@@ -351,7 +485,7 @@
             if(groupedItems[d]){ 
                 await changeQty(d, parseInt(groupedItems[d].qty) + 1);
             } else { 
-                let product = await db.products.get(d); // ดึงจากเครื่อง!
+                let product = await db.products.get(d); 
                 let p = product ? product.price : 0;
                 let c = product ? product.cost : 0;
                 let s = product ? product.stock : 0;
@@ -368,7 +502,6 @@
                 refreshList(); calculateTotal(); 
             }
 
-            // 📣 เพิ่มเงื่อนไขตรวจสอบและส่งเสียงเตือนสต็อกต่ำ 📣
             if (mode === 'SELL') {
                 let currentStock = parseInt(groupedItems[d].stock) || 0;
                 if (currentStock <= 5) {
@@ -426,7 +559,6 @@
             return canvas.toDataURL('image/jpeg', 0.6); 
         }
 
-        // 🌟 4. ระบบบันทึกบิลและเข้าคิวเมื่อออฟไลน์ 🌟
         async function finishSale() { 
             if(Object.keys(groupedItems).length === 0) return showStatus("ยังไม่มีสินค้าในตะกร้า!"); 
             let mode = localStorage.getItem('zenMode') || 'SELL';
@@ -439,23 +571,17 @@
             });
             let batch1 = allItems.slice(0, 16); let batch2 = allItems.slice(16, 32);
             
-            // สร้างรูป Collage
             let collage1 = await createCollage(batch1); 
             let collage2 = await createCollage(batch2);
 
-            // เตรียมข้อมูลบิล
             let billData = { mode: mode, items: itemsToSync, collage1: collage1, collage2: collage2, timestamp: Date.now() };
 
             groupedItems = {}; refreshList(); calculateTotal();
             
-            // บันทึกลงคิวก่อนเสมอ!
             await db.pendingSales.add(billData);
-            
-            // กระตุ้นระบบให้พยายามส่งข้อมูล
             syncPendingSales();
         }
 
-        // 🌟 5. ฟังก์ชันไล่ซิงค์ข้อมูลขึ้น Google Sheet อัตโนมัติ 🌟
         async function syncPendingSales() {
             let pendingCount = await db.pendingSales.count();
             const badge = document.getElementById('syncBadge');
@@ -467,11 +593,10 @@
                 badge.style.display = 'none';
             }
 
-            if (!navigator.onLine || pendingCount === 0) return; // ถ้าออฟไลน์ หรือไม่มีคิว ก็จบ
+            if (!navigator.onLine || pendingCount === 0) return; 
 
             showStatus("⏳ กำลังซิงค์บิลที่ค้างอยู่...");
             
-            // ดึงบิลที่ค้างมาส่งทีละบิล
             let pendingBills = await db.pendingSales.toArray();
             
             for (let bill of pendingBills) {
@@ -481,16 +606,14 @@
                         body: JSON.stringify(bill)
                     });
                     
-                    // เมื่อส่งผ่าน ให้ลบออกจากคิว
                     await db.pendingSales.delete(bill.id);
                     
                 } catch(err) {
                     console.error("Sync failed for bill:", bill.id);
-                    break; // ถ้าพังแปลว่าเน็ตมีปัญหา ให้หยุดลูปไว้ก่อน
+                    break; 
                 }
             }
             
-            // อัปเดตตัวเลขแจ้งเตือนอีกครั้ง
             pendingCount = await db.pendingSales.count();
             if(pendingCount === 0) {
                 badge.style.display = 'none';
@@ -498,10 +621,9 @@
             }
         }
 
-        // ดักจับเหตุการณ์เมื่อเครื่องกลับมาต่อเน็ตได้
         window.addEventListener('online', () => {
             showStatus("🌐 กลับมาออนไลน์แล้ว! กำลังซิงค์ข้อมูล...");
-            syncPendingSales(); // สั่งให้ยิงข้อมูลขึ้นทันที
+            syncPendingSales(); 
         });
 
         window.addEventListener('offline', () => {
@@ -514,7 +636,7 @@
             applyModeColor(m);
             
             await loadSheetData(); 
-            syncPendingSales(); // ตรวจสอบคิวเผื่อมีค้างจากรอบที่แล้ว
+            syncPendingSales(); 
 
             html5QrcodeScanner = new Html5QrcodeScanner("reader", {
                 fps: 10, qrbox: {width: 200, height: 60}, facingMode: "environment",
