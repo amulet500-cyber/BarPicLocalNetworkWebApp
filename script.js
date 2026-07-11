@@ -1,5 +1,5 @@
-const APP_VERSION = "v.1.3"; // 🌟 อัปเดตเวอร์ชัน
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbycg8de6efutKRLsoT8s6AQh3eJaEGmSOUV4kP4jhO9iUMimOzT3tbtcQcJaZArsyzb/exec";
+const APP_VERSION = "v.2.3"; // 🌟 อัปเดตเวอร์ชัน
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyEihh74c75U_dnHvrWhCM801b3f78p10ltJrrdZLhkn81Sl3qyb78LoQyq6zQ4FfPZ/exec";
 
 const db = new Dexie("ShopDatabase");
 db.version(1).stores({
@@ -41,108 +41,258 @@ function changeMode(m){
     refreshList();
 }
 
+// 🌟 1. ฟังก์ชันอัปเดตปุ่มอัจฉริยะ (ฉบับแก้ปัญหา ID และหน้าจอ)
+function updateCameraButton() {
+    // 1. ตรวจสอบเงื่อนไขหน้าจอ (เช็คจากข้อความที่แสดงเลย เพื่อความชัวร์)
+    const menuElement = document.getElementById("menuSelect");
+    if (menuElement) {
+        const selectedText = menuElement.options[menuElement.selectedIndex].text;
+        // ถ้าข้อความใน Dropdown ไม่มีคำว่า "เช็ค" ให้หยุดทำงาน (ไม่ยุ่งกับหน้าขาย/ซื้อ)
+        if (!selectedText.includes("เช็ค")) return; 
+    }
+
+    // 2. 💡 ค้นหาปุ่ม (หาจาก btnNewBarcode ก่อน ถ้าไม่มีค่อยหา btnPurple)
+    const btn = document.getElementById("btnNewBarcode") || document.getElementById("btnPurple");
+    if (!btn) {
+        console.log("❌ หาปุ่มไม่เจอครับ ศิษย์พี่ต้องเช็ค ID ใน HTML ครับ");
+        return; 
+    }
+
+    // 3. ตรวจสอบตะกร้าสินค้า
+    const hasItems = (typeof groupedItems !== 'undefined' && Object.keys(groupedItems).length > 0);
+
+    // 4. อัปเดต UI 
+    if (hasItems) {
+        btn.style.backgroundColor = "#3498db"; // เปลี่ยนเป็นสีฟ้า
+        btn.innerHTML = "📸🖼️📂"; // ไอคอนส่ง Drive
+        
+        // 💡 สำคัญ: บังคับให้ปุ่มกลับมาเรียกฟังก์ชัน "แยกทาง" เสมอ
+        btn.onclick = onPurpleCameraBtnClick; 
+    } else {
+        btn.style.backgroundColor = "#8e44ad"; // เปลี่ยนเป็นสีม่วง
+        btn.innerHTML = "📷🖼️🖨️"; // ไอคอนสร้างบาร์โค้ด
+        
+        // 💡 สำคัญ: บังคับให้ปุ่มกลับมาเรียกฟังก์ชัน "แยกทาง" เสมอ
+        btn.onclick = onPurpleCameraBtnClick; 
+    }
+}
+
+// 🌟 2. ฟังก์ชันตัวแยกทางเดิน (Logic ใหม่)
+function onPurpleCameraBtnClick(event) {
+    if(event) event.stopPropagation();
+    
+    // ตรวจสอบหน้าอีกครั้ง ป้องกันการกดในหน้าซื้อ/ขาย
+    const menuElement = document.getElementById("menuSelect");
+    const currentView = menuElement ? menuElement.value : "check";
+    if (currentView !== "check") return; 
+
+    let currentCartBarcode = "";
+    
+    // 💡 แก้ไขจุดบอด: ดึงรหัสบาร์โค้ดล่าสุดจาก groupedItems
+    if (typeof groupedItems !== 'undefined' && Object.keys(groupedItems).length > 0) {
+        const keys = Object.keys(groupedItems);
+        currentCartBarcode = keys[keys.length - 1]; // ดึงบาร์โค้ดตัวล่าสุดที่สแกน
+    }
+
+    // แยกเส้นทางทำงาน
+    if (currentCartBarcode === "") {
+        showBarcodePreview(event); // เส้นทางที่ 1: ตะกร้าว่าง -> ปริ้น
+    } else {
+        captureAndSaveToDrive(event, currentCartBarcode); // เส้นทางที่ 2: มีของ -> ส่ง Drive
+    }
+}
+
+// 🌟 3. ฟังก์ชันความสามารถเก่า (สุ่มบาร์โค้ดและพิมพ์)
 function showBarcodePreview(event) {
     if(event) event.stopPropagation();
-    
     const v = document.getElementsByTagName('video')[0];
-    if (!v || v.videoWidth === 0) {
-        return showStatus("⚠️ ไม่พบกล้อง กรุณารอให้กล้องทำงานก่อน");
-    }
+    if (!v || v.videoWidth === 0) return showStatus("⚠️ ไม่พบกล้อง");
 
+    // สร้าง Canvas ขนาด 400x650px
     const c = document.createElement('canvas');
-    c.width = 800; c.height = 800;
+    c.width = 400; 
+    c.height = 650; 
     const ctx = c.getContext('2d');
+    
+    // ใส่สีพื้นหลังเป็นสีขาว
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, c.width, c.height);
+
+    // วาดรูปสินค้าไว้ด้านบน (400x400)
     const size = Math.min(v.videoWidth, v.videoHeight);
-    const xOffset = (v.videoWidth - size) / 2;
-    const yOffset = (v.videoHeight - size) / 2;
-    
-    ctx.drawImage(v, xOffset, yOffset, size, size, 0, 0, 800, 800);
-    const highResImg = c.toDataURL('image/jpeg', 0.8);
+    ctx.drawImage(v, (v.videoWidth - size) / 2, (v.videoHeight - size) / 2, size, size, 0, 0, 400, 400);
 
+    // สุ่มรหัสบาร์โค้ด
     const randomCode = "99" + Math.floor(10000000000 + Math.random() * 90000000000).toString().substring(0, 11);
-    db.products.put({ code: randomCode, price: 0, cost: 0, stock: 0, supplier: 'NEW' });
-
-    const printArea = document.getElementById("printArea");
-    printArea.style.display = "block";
     
-// ... โค้ดส่วนบนคงเดิม ...
-
-    // อัปเดต HTML (เพิ่ม id ให้กับ SVG เพื่อเรียกใช้ง่ายขึ้น)
-    printArea.innerHTML = `
-        <div id="printableContent" style="width: 100%; text-align: center; padding: 20px; font-family: sans-serif;">
-            <div class="preview-title" style="margin-bottom:10px;">👀 ตรวจสอบภาพก่อนพิมพ์</div>
-            <img src="${highResImg}" style="width: 90%; max-width: 250px; border: 1px solid #ccc; display: block; margin: 0 auto;">
-            <div style="margin-top: 15px;">
-                <svg id="newBarcodeSvg"></svg>
-            </div>
-            <div class="preview-hint" style="margin-top: 10px; font-size: 12px; color: #666;">(นำไปแปะที่เคาน์เตอร์คิดเงิน)</div>
-        </div>
-    `;
-
-    // ใช้ setTimeout ครอบ JsBarcode เล็กน้อยเพื่อให้แน่ใจว่า DOM ใน printArea ถูกสร้างเสร็จแล้ว
+    // วาดบาร์โค้ดลงบน Canvas
+    const bc = document.createElement('canvas');
     if (typeof JsBarcode !== 'undefined') {
-        setTimeout(() => {
-            JsBarcode("#newBarcodeSvg", randomCode, {
-                format: "CODE128", 
-                width: 2.5, 
-                height: 60, 
-                displayValue: true, 
-                fontSize: 20, 
-                margin: 10
-            });
-        }, 100); // รอ 100ms ให้ browser วาด HTML ให้เสร็จ
+        JsBarcode(bc, randomCode, { 
+            format: "CODE128", 
+            width: 2, 
+            height: 80, 
+            fontSize: 20,
+            background: "#ffffff",
+            lineColor: "#000000"
+        });
+        ctx.drawImage(bc, (400 - bc.width) / 2, 500); 
     }
 
-    // ... โค้ดส่วนล่างคงเดิม ...
-
-    html5QrcodeScanner.pause();
+    const finalImg = c.toDataURL('image/jpeg', 0.8);
+    
+    const printArea = document.getElementById("printArea");
+    if(printArea) {
+        printArea.style.display = "block";
+        printArea.innerHTML = `
+            <div style="text-align:center; padding:20px;">
+                <img src="${finalImg}" style="width:300px; border:1px solid #ccc;">
+            </div>`;
+    }
+    
     showStatus("รอการยืนยันพิมพ์...");
-    speakText("ตรวจสอบรูปภาพ ถ้าชัดเจนแล้วกดพิมพ์ได้เลยครับ");
-
     const btnNew = document.getElementById("btnNewBarcode");
-    btnNew.innerHTML = "🖨️ พิมพ์";
-    btnNew.style.background = "#e67e22";
-    btnNew.onclick = executePrint;
-
-    const btnCancel = document.getElementById("btnCancelBtn");
-    btnCancel.innerHTML = "❌ ยกเลิก";
-    btnCancel.onclick = cancelPreview;
+    if(btnNew) {
+        btnNew.innerHTML = "🖨️ พิมพ์";
+        btnNew.onclick = executePrint;
+    }
 }
 
+// 🌟 4. ฟังก์ชันสั่งพิมพ์
 function executePrint(event) {
     if(event) event.stopPropagation();
-    showStatus("กำลังสั่งพิมพ์...");
-
-    // แค่สั่งพิมพ์เลยครับ ไม่ต้องย้าย HTML แล้ว
-    // เพราะ CSS @media print ด้านบนจะจัดการซ่อนตัวอื่นให้เราอัตโนมัติ
+    window.print();
     setTimeout(() => {
-        window.print();
-        
-        // รอให้พ้นหน้าต่าง Print Preview แล้วค่อยซ่อน printArea กลับ
-        setTimeout(() => {
-            document.getElementById("printArea").style.display = "none";
-        }, 1000);
-    }, 500);
+        const printArea = document.getElementById("printArea");
+        if(printArea) printArea.style.display = "none";
+        resetButtonToCameraMode();
+    }, 1000);
 }
 
-function cancelPreview(event, isSilent = false) {
+// 🌟 5. ฟังก์ชันยกเลิกพิมพ์
+function cancelPreview(event) {
     if(event) event.stopPropagation();
     const printArea = document.getElementById("printArea");
-    if (printArea.style.display === "block") {
-        printArea.style.display = "none";
-        printArea.innerHTML = "";
-        const btnNew = document.getElementById("btnNewBarcode");
-        btnNew.innerHTML = "📸 ถ่าย";
-        btnNew.style.background = "#9b59b6";
-        btnNew.onclick = showBarcodePreview;
-        const btnCancel = document.getElementById("btnCancelBtn");
-        btnCancel.innerHTML = "ยกเลิก";
-        btnCancel.onclick = cancelBasket;
-        if (isScanning && typeof html5QrcodeScanner !== 'undefined') {
-            html5QrcodeScanner.resume();
-        }
-        if (!isSilent) showStatus("✅ พร้อมสแกนต่อ");
+    if(printArea) printArea.style.display = "none";
+    resetButtonToCameraMode();
+    showStatus("ยกเลิกแล้ว");
+}
+
+// 🌟 6. ฟังก์ชันคืนค่าปุ่ม
+function resetButtonToCameraMode() {
+    updateCameraButton(); 
+}
+
+// 🌟 7. ฟังก์ชันความสามารถใหม่ (ถ่ายรูป + ส่ง Drive)
+function captureAndSaveToDrive(event, barcodeText) {
+    if(event) event.stopPropagation();
+    const v = document.getElementsByTagName('video')[0];
+    if (!v || v.videoWidth === 0) return showStatus("⚠️ ไม่พบกล้อง");
+
+    showStatus("กำลังรวมรูปและส่งเข้า Google Drive...");
+
+    // สร้าง Canvas มาตรฐาน 400x650px
+    const c = document.createElement('canvas');
+    c.width = 400; 
+    c.height = 650; 
+    const ctx = c.getContext('2d');
+    
+    // ใส่สีพื้นหลังเป็นสีขาว
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, c.width, c.height);
+
+    // วาดรูปสินค้าให้อยู่ด้านบน (400x400)
+    const size = Math.min(v.videoWidth, v.videoHeight);
+    ctx.drawImage(v, (v.videoWidth - size) / 2, (v.videoHeight - size) / 2, size, size, 0, 0, 400, 400);
+
+    // รวมบาร์โค้ดลงไปด้านล่าง (ที่ความสูง 520px)
+    const bc = document.createElement('canvas');
+    if (typeof JsBarcode !== 'undefined') {
+        JsBarcode(bc, barcodeText, { 
+            format: "CODE128", 
+            width: 2, 
+            height: 80, 
+            fontSize: 20,
+            background: "#ffffff",
+            lineColor: "#000000"
+        });
+        ctx.drawImage(bc, (400 - bc.width) / 2, 520);
     }
+
+    const formData = new URLSearchParams();
+    formData.append("isImageUpload", "true");
+    formData.append("barcode", barcodeText);
+    formData.append("image64", c.toDataURL('image/jpeg', 0.8));
+
+    const scriptUrl = typeof GOOGLE_SCRIPT_URL !== 'undefined' ? GOOGLE_SCRIPT_URL : "";
+
+    fetch(scriptUrl, { 
+        method: 'POST',
+        body: formData,
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    })
+    .then(res => res.json())
+    .then(data => {
+        showStatus(data.status === "success" ? "✅ บันทึก " + barcodeText + " เรียบร้อยครับ" : "❌ ผิดพลาด: " + (data.message || ""));
+    })
+    .catch(err => {
+        showStatus("❌ ส่งข้อมูลไม่สำเร็จ");
+        console.error(err);
+    });
+}
+
+// 🌟 8. onScanSuccess (แก้ไขอัปเดตปุ่มตอนท้าย)
+async function onScanSuccess(d) {
+    new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
+    let mode = localStorage.getItem('zenMode') || 'SELL';
+    
+    if(groupedItems[d]){ 
+        await changeQty(d, parseInt(groupedItems[d].qty) + 1);
+    } else { 
+        let product = await db.products.get(d); 
+        let p = product ? product.price : 0;
+        let c = product ? product.cost : 0;
+        let s = product ? product.stock : 0;
+        let sup = product ? product.supplier : '';
+
+        groupedItems[d] = {code:d, img:takeSnapshot(), qty:1, price: p, cost: c, stock: s, supplier: sup}; 
+        
+        if (product) {
+            if (mode === 'SELL') product.stock = parseInt(product.stock || 0) - 1;
+            else if (mode === 'BUY') product.stock = parseInt(product.stock || 0) + 1;
+            await db.products.put(product);
+            groupedItems[d].stock = product.stock;
+        }
+        refreshList(); 
+        calculateTotal(); 
+    }
+
+    if (mode === 'SELL') {
+        let currentStock = parseInt(groupedItems[d].stock) || 0;
+        if (currentStock <= 5) {
+            speakText("สินค้านี้ใกล้หมดครับ เหลือ " + currentStock + " ชิ้น");
+        }
+    }
+
+    setTimeout(() => {
+        const listItems = document.getElementById("itemList").getElementsByClassName("item-row");
+        for (let item of listItems) {
+            if (item.querySelector('.barcode-text').innerText === d) {
+                item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                item.style.backgroundColor = "rgba(241, 196, 15, 0.3)";
+                setTimeout(() => item.style.backgroundColor = "", 500);
+                break;
+            }
+        }
+    }, 100);
+    
+    html5QrcodeScanner.pause(); 
+    showStatus("✅ เพิ่มลงตะกร้าแล้ว"); 
+    
+    // เรียกใช้งานเมื่อตะกร้ามีการอัปเดต
+    updateCameraButton(); 
+
+    setTimeout(()=>{if(isScanning)html5QrcodeScanner.resume()},1500);
 }
 
 async function handleMenuAction(action) {
@@ -348,54 +498,6 @@ function renderItem(i){
 }
 
 function toggleCostVisibility(el){el.classList.toggle('hidden-cost');el.classList.toggle('visible-cost')}
-
-async function onScanSuccess(d){
-    new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
-    let mode = localStorage.getItem('zenMode') || 'SELL';
-    
-    if(groupedItems[d]){ 
-        await changeQty(d, parseInt(groupedItems[d].qty) + 1);
-    } else { 
-        let product = await db.products.get(d); 
-        let p = product ? product.price : 0;
-        let c = product ? product.cost : 0;
-        let s = product ? product.stock : 0;
-        let sup = product ? product.supplier : '';
-
-        groupedItems[d] = {code:d, img:takeSnapshot(), qty:1, price: p, cost: c, stock: s, supplier: sup}; 
-        
-        if (product) {
-            if (mode === 'SELL') product.stock = parseInt(product.stock || 0) - 1;
-            else if (mode === 'BUY') product.stock = parseInt(product.stock || 0) + 1;
-            await db.products.put(product);
-            groupedItems[d].stock = product.stock;
-        }
-        refreshList(); calculateTotal(); 
-    }
-
-    if (mode === 'SELL') {
-        let currentStock = parseInt(groupedItems[d].stock) || 0;
-        if (currentStock <= 5) {
-            speakText("สินค้านี้ใกล้หมดครับ เหลือ " + currentStock + " ชิ้น");
-        }
-    }
-
-    setTimeout(() => {
-        const listItems = document.getElementById("itemList").getElementsByClassName("item-row");
-        for (let item of listItems) {
-            if (item.querySelector('.barcode-text').innerText === d) {
-                item.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                item.style.backgroundColor = "rgba(241, 196, 15, 0.3)";
-                setTimeout(() => item.style.backgroundColor = "", 500);
-                break;
-            }
-        }
-    }, 100);
-    
-    html5QrcodeScanner.pause(); 
-    showStatus("✅ เพิ่มลงตะกร้าแล้ว"); 
-    setTimeout(()=>{if(isScanning)html5QrcodeScanner.resume()},1500);
-}
 
 function takeSnapshot(){ 
     const v=document.getElementsByTagName('video')[0], c=document.createElement('canvas'); 
