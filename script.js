@@ -1,4 +1,4 @@
-const APP_VERSION = "v.2.4"; // 🌟 อัปเดตเวอร์ชัน
+const APP_VERSION = "v.2.5"; // 🌟 อัปเดตเวอร์ชัน
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyEihh74c75U_dnHvrWhCM801b3f78p10ltJrrdZLhkn81Sl3qyb78LoQyq6zQ4FfPZ/exec";
 
 const db = new Dexie("ShopDatabase");
@@ -47,19 +47,16 @@ function changeMode(m){
     showStatus("โหมด: "+m);
     calculateTotal();
     refreshList();
+    updateCameraButton(); // อัปเดตปุ่มเมื่อเปลี่ยนโหมด
 }
 
-// 🌟 1. ฟังก์ชันอัปเดตปุ่มอัจฉริยะ (ฉบับแก้ปัญหา ID และหน้าจอ)
+// 🌟 1. ฟังก์ชันอัปเดตปุ่มอัจฉริยะ (แก้ไขการตรวจสอบโหมดให้แม่นยำขึ้น)
 function updateCameraButton() {
-    // 1. ตรวจสอบเงื่อนไขหน้าจอ (เช็คจากข้อความที่แสดงเลย เพื่อความชัวร์)
-    const menuElement = document.getElementById("menuSelect");
-    if (menuElement) {
-        const selectedText = menuElement.options[menuElement.selectedIndex].text;
-        // ถ้าข้อความใน Dropdown ไม่มีคำว่า "เช็ค" ให้หยุดทำงาน (ไม่ยุ่งกับหน้าขาย/ซื้อ)
-        if (!selectedText.includes("เช็ค")) return; 
-    }
+    // 1. ตรวจสอบโหมดปัจจุบัน
+    const currentMode = localStorage.getItem('zenMode') || 'SELL';
+    if (currentMode !== 'CHECK') return; 
 
-    // 2. 💡 ค้นหาปุ่ม (หาจาก btnNewBarcode ก่อน ถ้าไม่มีค่อยหา btnPurple)
+    // 2. ค้นหาปุ่ม
     const btn = document.getElementById("btnNewBarcode") || document.getElementById("btnPurple");
     if (!btn) {
         console.log("❌ หาปุ่มไม่เจอครับ ศิษย์พี่ต้องเช็ค ID ใน HTML ครับ");
@@ -74,13 +71,13 @@ function updateCameraButton() {
         btn.style.backgroundColor = "#3498db"; // เปลี่ยนเป็นสีฟ้า
         btn.innerHTML = "📸🖼️📂"; // ไอคอนส่ง Drive
         
-        // 💡 สำคัญ: บังคับให้ปุ่มกลับมาเรียกฟังก์ชัน "แยกทาง" เสมอ
+        // บังคับให้ปุ่มกลับมาเรียกฟังก์ชัน "แยกทาง" เสมอ
         btn.onclick = onPurpleCameraBtnClick; 
     } else {
         btn.style.backgroundColor = "#8e44ad"; // เปลี่ยนเป็นสีม่วง
         btn.innerHTML = "📷🖼️🖨️"; // ไอคอนสร้างบาร์โค้ด
         
-        // 💡 สำคัญ: บังคับให้ปุ่มกลับมาเรียกฟังก์ชัน "แยกทาง" เสมอ
+        // บังคับให้ปุ่มกลับมาเรียกฟังก์ชัน "แยกทาง" เสมอ
         btn.onclick = onPurpleCameraBtnClick; 
     }
 }
@@ -89,14 +86,13 @@ function updateCameraButton() {
 function onPurpleCameraBtnClick(event) {
     if(event) event.stopPropagation();
     
-    // ตรวจสอบหน้าอีกครั้ง ป้องกันการกดในหน้าซื้อ/ขาย
-    const menuElement = document.getElementById("menuSelect");
-    const currentView = menuElement ? menuElement.value : "check";
-    if (currentView !== "check") return; 
+    // ตรวจสอบโหมดอีกครั้ง ป้องกันการกดในหน้าซื้อ/ขาย
+    const currentMode = localStorage.getItem('zenMode') || 'SELL';
+    if (currentMode !== 'CHECK') return; 
 
     let currentCartBarcode = "";
     
-    // 💡 แก้ไขจุดบอด: ดึงรหัสบาร์โค้ดล่าสุดจาก groupedItems
+    // ดึงรหัสบาร์โค้ดล่าสุดจาก groupedItems
     if (typeof groupedItems !== 'undefined' && Object.keys(groupedItems).length > 0) {
         const keys = Object.keys(groupedItems);
         currentCartBarcode = keys[keys.length - 1]; // ดึงบาร์โค้ดตัวล่าสุดที่สแกน
@@ -110,7 +106,7 @@ function onPurpleCameraBtnClick(event) {
     }
 }
 
-// 🌟 3. ฟังก์ชันความสามารถเก่า (สุ่มบาร์โค้ดและพิมพ์)
+// 🌟 3. ฟังก์ชันสร้างและสุ่มบาร์โค้ดเพื่อพิมพ์
 function showBarcodePreview(event) {
     if(event) event.stopPropagation();
     const v = document.getElementsByTagName('video')[0];
@@ -183,7 +179,6 @@ function cancelPreview(event) {
     const printArea = document.getElementById("printArea");
     if(printArea) printArea.style.display = "none";
     resetButtonToCameraMode();
-    showStatus("ยกเลิกแล้ว");
 }
 
 // 🌟 6. ฟังก์ชันคืนค่าปุ่ม
@@ -249,11 +244,14 @@ function captureAndSaveToDrive(event, barcodeText) {
     });
 }
 
-// 🌟 8. onScanSuccess (แก้ไขอัปเดตปุ่มตอนท้าย)
+// 🌟 8. onScanSuccess (เพิ่มความสามารถโชว์กล่อง Overlay มุมขวาบน)
 async function onScanSuccess(d) {
     new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
     let mode = localStorage.getItem('zenMode') || 'SELL';
     
+    // ถ่ายรูปเก็บไว้ก่อนเลย
+    let snapImg = takeSnapshot();
+
     if(groupedItems[d]){ 
         await changeQty(d, parseInt(groupedItems[d].qty) + 1);
     } else { 
@@ -263,7 +261,7 @@ async function onScanSuccess(d) {
         let s = product ? product.stock : 0;
         let sup = product ? product.supplier : '';
 
-        groupedItems[d] = {code:d, img:takeSnapshot(), qty:1, price: p, cost: c, stock: s, supplier: sup}; 
+        groupedItems[d] = {code:d, img:snapImg, qty:1, price: p, cost: c, stock: s, supplier: sup}; 
         
         if (product) {
             if (mode === 'SELL') product.stock = parseInt(product.stock || 0) - 1;
@@ -273,6 +271,18 @@ async function onScanSuccess(d) {
         }
         refreshList(); 
         calculateTotal(); 
+    }
+
+    // 🌟 9. คำสั่งโชว์กล่องรูปภาพมุมขวาบนเมื่อสแกนเสร็จ 🌟
+    const overlay = document.getElementById("scan-preview-overlay");
+    const overlayImg = document.getElementById("last-scanned-img");
+    if (overlay && overlayImg && snapImg !== "") {
+        overlayImg.src = snapImg;
+        overlay.style.display = "block";
+        // ซ่อนอัตโนมัติหลังจากผ่านไป 2.5 วินาที
+        setTimeout(() => {
+            overlay.style.display = "none";
+        }, 2500);
     }
 
     if (mode === 'SELL') {
@@ -557,7 +567,7 @@ async function finishSale() {
 
     let billData = { mode: mode, items: itemsToSync, collage1: collage1, collage2: collage2, timestamp: Date.now() };
 
-    groupedItems = {}; refreshList(); calculateTotal();
+    groupedItems = {}; refreshList(); calculateTotal(); updateCameraButton();
     
     await db.pendingSales.add(billData);
     syncPendingSales();
