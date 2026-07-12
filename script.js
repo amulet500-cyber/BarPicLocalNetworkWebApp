@@ -1,4 +1,4 @@
-const APP_VERSION = "v.2.7"; // 🌟 อัปเดตเวอร์ชัน
+const APP_VERSION = "v.2.8"; // 🌟 อัปเดตเวอร์ชัน
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyEihh74c75U_dnHvrWhCM801b3f78p10ltJrrdZLhkn81Sl3qyb78LoQyq6zQ4FfPZ/exec";
 
 const db = new Dexie("ShopDatabase");
@@ -68,17 +68,41 @@ function updateCameraButton() {
 
     // 4. อัปเดต UI 
     if (hasItems) {
-        btn.style.backgroundColor = "#3498db"; // เปลี่ยนเป็นสีฟ้า
+        btn.style.backgroundColor = "#3498db"; // สีฟ้า
         btn.innerHTML = "📸🖼️📂"; // ไอคอนส่ง Drive
         
-        // บังคับให้ปุ่มกลับมาเรียกฟังก์ชัน "แยกทาง" เสมอ
-        btn.onclick = onPurpleCameraBtnClick; 
+        // ปุ่มสีฟ้า: เล่นเสียงชัตเตอร์ + แฟลช
+        btn.onclick = function() {
+            // เล่นเสียง
+            new Audio('https://actions.google.com/sounds/v1/camera/camera_shutter_click.ogg').play();
+            
+            // ตรวจสอบว่ามี flash-overlay หรือไม่ ก่อนสั่งงาน (ป้องกันจอดำ)
+            const flash = document.getElementById('flash-overlay');
+            if (flash) {
+                flash.style.opacity = 1;
+                setTimeout(() => flash.style.opacity = 0, 100);
+            }
+            
+            // เรียกฟังก์ชันหลัก
+            if (typeof onPurpleCameraBtnClick === 'function') {
+                onPurpleCameraBtnClick();
+            }
+        };
     } else {
-        btn.style.backgroundColor = "#8e44ad"; // เปลี่ยนเป็นสีม่วง
+        btn.style.backgroundColor = "#8e44ad"; // สีม่วง
         btn.innerHTML = "📷🖼️🖨️"; // ไอคอนสร้างบาร์โค้ด
         
-        // บังคับให้ปุ่มกลับมาเรียกฟังก์ชัน "แยกทาง" เสมอ
-        btn.onclick = onPurpleCameraBtnClick; 
+        // ปุ่มสีม่วง: พูดเตือน
+        btn.onclick = function() {
+            if (typeof speakText === 'function') {
+                speakText("ตรวจสอบภาพและบาร์โค้ดก่อนพิมพ์ครับ");
+            }
+            
+            // เรียกฟังก์ชันหลัก
+            if (typeof onPurpleCameraBtnClick === 'function') {
+                onPurpleCameraBtnClick();
+            }
+        };
     }
 }
 
