@@ -1,4 +1,4 @@
-const APP_VERSION = "v.2.3"; // 🌟 อัปเดตเวอร์ชัน
+const APP_VERSION = "v.2.4"; // 🌟 อัปเดตเวอร์ชัน
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyEihh74c75U_dnHvrWhCM801b3f78p10ltJrrdZLhkn81Sl3qyb78LoQyq6zQ4FfPZ/exec";
 
 const db = new Dexie("ShopDatabase");
@@ -12,10 +12,18 @@ let currentSpeech = null;
 
 function speakText(text) {
     if ('speechSynthesis' in window) {
+        // 1. ยกเลิกเสียงที่พูดค้างอยู่ก่อน
         window.speechSynthesis.cancel();
-        currentSpeech = new SpeechSynthesisUtterance(text);
-        currentSpeech.lang = 'th-TH';
-        window.speechSynthesis.speak(currentSpeech);
+        
+        // 2. ประกาศตัวแปรด้วย var ให้ถูกต้อง (ป้องกันหน้าจอดำจาก error)
+        var msg = new SpeechSynthesisUtterance(text);
+        msg.lang = 'th-TH';
+        msg.rate = 1.0; 
+        
+        // 3. สั่งพูด
+        window.speechSynthesis.speak(msg);
+    } else {
+        console.warn("เบราว์เซอร์นี้ไม่รองรับระบบเสียงพูดครับ");
     }
 }
 
