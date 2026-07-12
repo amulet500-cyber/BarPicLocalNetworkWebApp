@@ -1,4 +1,4 @@
-const APP_VERSION = "v.2.5"; // 🌟 อัปเดตเวอร์ชัน
+const APP_VERSION = "v.2.7"; // 🌟 อัปเดตเวอร์ชัน
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyEihh74c75U_dnHvrWhCM801b3f78p10ltJrrdZLhkn81Sl3qyb78LoQyq6zQ4FfPZ/exec";
 
 const db = new Dexie("ShopDatabase");
@@ -112,10 +112,10 @@ function showBarcodePreview(event) {
     const v = document.getElementsByTagName('video')[0];
     if (!v || v.videoWidth === 0) return showStatus("⚠️ ไม่พบกล้อง");
 
-    // สร้าง Canvas ขนาด 400x650px
+    // สร้าง Canvas ขนาด 400x550px
     const c = document.createElement('canvas');
     c.width = 400; 
-    c.height = 650; 
+    c.height = 550; 
     const ctx = c.getContext('2d');
     
     // ใส่สีพื้นหลังเป็นสีขาว
@@ -140,7 +140,7 @@ function showBarcodePreview(event) {
             background: "#ffffff",
             lineColor: "#000000"
         });
-        ctx.drawImage(bc, (400 - bc.width) / 2, 500); 
+        ctx.drawImage(bc, (400 - bc.width) / 2, 410); 
     }
 
     const finalImg = c.toDataURL('image/jpeg', 0.8);
@@ -188,16 +188,26 @@ function resetButtonToCameraMode() {
 
 // 🌟 7. ฟังก์ชันความสามารถใหม่ (ถ่ายรูป + ส่ง Drive)
 function captureAndSaveToDrive(event, barcodeText) {
+    // --- เริ่มต้นเพิ่มส่วนเอฟเฟกต์ ---
+    const flash = document.getElementById('flash-overlay');
+    if (flash) {
+        flash.style.opacity = 1; 
+        setTimeout(() => flash.style.opacity = 0, 100); 
+    }
+    // เล่นเสียงชัตเตอร์
+    new Audio('https://actions.google.com/sounds/v1/camera/camera_shutter_click.ogg').play();
+    // --- จบส่วนเอฟเฟกต์ ---
+
     if(event) event.stopPropagation();
     const v = document.getElementsByTagName('video')[0];
     if (!v || v.videoWidth === 0) return showStatus("⚠️ ไม่พบกล้อง");
 
     showStatus("กำลังรวมรูปและส่งเข้า Google Drive...");
 
-    // สร้าง Canvas มาตรฐาน 400x650px
+    // สร้าง Canvas มาตรฐาน 400x550px
     const c = document.createElement('canvas');
     c.width = 400; 
-    c.height = 650; 
+    c.height = 550; 
     const ctx = c.getContext('2d');
     
     // ใส่สีพื้นหลังเป็นสีขาว
@@ -208,7 +218,7 @@ function captureAndSaveToDrive(event, barcodeText) {
     const size = Math.min(v.videoWidth, v.videoHeight);
     ctx.drawImage(v, (v.videoWidth - size) / 2, (v.videoHeight - size) / 2, size, size, 0, 0, 400, 400);
 
-    // รวมบาร์โค้ดลงไปด้านล่าง (ที่ความสูง 520px)
+    // รวมบาร์โค้ดลงไปด้านล่าง (ที่ความสูง 410px)
     const bc = document.createElement('canvas');
     if (typeof JsBarcode !== 'undefined') {
         JsBarcode(bc, barcodeText, { 
@@ -219,7 +229,7 @@ function captureAndSaveToDrive(event, barcodeText) {
             background: "#ffffff",
             lineColor: "#000000"
         });
-        ctx.drawImage(bc, (400 - bc.width) / 2, 520);
+        ctx.drawImage(bc, (400 - bc.width) / 2, 410);
     }
 
     const formData = new URLSearchParams();
@@ -236,10 +246,17 @@ function captureAndSaveToDrive(event, barcodeText) {
     })
     .then(res => res.json())
     .then(data => {
-        showStatus(data.status === "success" ? "✅ บันทึก " + barcodeText + " เรียบร้อยครับ" : "❌ ผิดพลาด: " + (data.message || ""));
+        if (data.status === "success") {
+            showStatus("✅ บันทึก " + barcodeText + " เรียบร้อยครับ");
+            speakText("บันทึกรูป Google Drive สำเร็จครับ");
+        } else {
+            showStatus("❌ ผิดพลาด: " + (data.message || ""));
+            speakText("บันทึกไม่สำเร็จครับ");
+        }
     })
     .catch(err => {
         showStatus("❌ ส่งข้อมูลไม่สำเร็จ");
+        speakText("มีข้อผิดพลาดในการส่งข้อมูลครับ");
         console.error(err);
     });
 }
