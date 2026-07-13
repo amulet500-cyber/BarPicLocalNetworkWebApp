@@ -1,4 +1,4 @@
-const APP_VERSION = "v.2.01"; // 🌟 อัปเดตเวอร์ชัน
+const APP_VERSION = "v.2.02"; // 🌟 อัปเดตเวอร์ชัน
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyEihh74c75U_dnHvrWhCM801b3f78p10ltJrrdZLhkn81Sl3qyb78LoQyq6zQ4FfPZ/exec";
 const db = new Dexie("ShopDatabase");
 db.version(1).stores({
