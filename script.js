@@ -1,4 +1,4 @@
-const APP_VERSION = "v.1.06"; // 🌟 อัปเดตเวอร์ชัน
+const APP_VERSION = "v.1.09"; // 🌟 อัปเดตเวอร์ชัน
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyEihh74c75U_dnHvrWhCM801b3f78p10ltJrrdZLhkn81Sl3qyb78LoQyq6zQ4FfPZ/exec";
 const db = new Dexie("ShopDatabase");
 db.version(1).stores({
@@ -7,6 +7,18 @@ db.version(1).stores({
 });
 let groupedItems={}, html5QrcodeScanner, idleTimer, isScanning=true;
 let currentSpeech = null;
+
+// --- ส่วนสุ่มอิโมจิ ---
+const emojiList = ['😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆', '😉', '😊', '😋', '😎', '😍', '😘', '🥰', '😗', '😙', '😚', '☺️', '🙂', '🤗', '🤩', '😌', '😛', '😜', '😝', '🤤', '😇', '🥳', '🤠'];
+
+function updateBarcodeTitle() {
+    const titleElement = document.querySelector('#cart h3');
+    if (titleElement) {
+        const emoji1 = emojiList[Math.floor(Math.random() * emojiList.length)];
+        const emoji2 = emojiList[Math.floor(Math.random() * emojiList.length)];
+        titleElement.innerHTML = `${emoji1}บาร์โค้ด สินค้า${emoji2}`;
+    }
+}
 
 function speakText(text) {
     if ('speechSynthesis' in window) {
@@ -246,26 +258,23 @@ async function onScanSuccess(d) {
         calculateTotal(); 
     }
 
-    // 🌟 ระบบ Preview แบบใหม่ ปรับปรุงให้คลิกปิดได้และหยุดเวลาอัตโนมัติ
+    // 🌟 ระบบ Preview แบบใหม่
     const overlay = document.getElementById("scan-preview-overlay"); 
     const overlayImg = document.getElementById("last-scanned-img");
     
     if (overlay && overlayImg && snapImg !== "") {
-        // ล้างเวลาเก่าทิ้งก่อนเสมอ
         if (previewTimer) clearTimeout(previewTimer);
         
         overlayImg.src = snapImg;
         overlay.style.display = "flex";
         overlay.style.opacity = "1"; 
 
-        // ทำให้คลิกที่รูปแล้วปิดทันที
         overlay.onclick = function() {
             overlay.style.opacity = "0";
             setTimeout(() => { overlay.style.display = "none"; }, 500);
             if (previewTimer) clearTimeout(previewTimer);
         };
         
-        // ตั้งเวลาให้ซ่อนเองใน 10 วินาที
         previewTimer = setTimeout(() => {
             overlay.style.opacity = "0"; 
             setTimeout(() => { overlay.style.display = "none"; }, 1000);
@@ -292,6 +301,9 @@ async function onScanSuccess(d) {
         }
     }, 100);
 
+    // 🌟 อัปเดตอิโมจิให้สนุกสนานทุกครั้งที่สแกน
+    updateBarcodeTitle();
+
     html5QrcodeScanner.pause(); 
     showStatus("✅ เพิ่มลงตะกร้าแล้ว"); 
     updateCameraButton(); 
@@ -299,9 +311,8 @@ async function onScanSuccess(d) {
     setTimeout(() => {
         isProcessing = false; 
         if(isScanning) html5QrcodeScanner.resume();
-    }, 600); //หน่วงพัก 600 มิลลิวินาที (0.6 วินาที) จะทำให้ระบบตอบสนองไวขึ้นมาก
+    }, 800);
 }
-
 async function handleMenuAction(action) {
     if (!action) return;
     document.getElementById("reportMenu").selectedIndex = 0; 
@@ -727,6 +738,7 @@ window.addEventListener('offline', () => {
 });
 
 window.onload = async () => {
+    updateBarcodeTitle();
     let m = localStorage.getItem('zenMode') || 'SELL'; 
     document.getElementById('modeSelect').value = m; 
     applyModeColor(m);
