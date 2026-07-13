@@ -34,16 +34,16 @@
     <div id="headerBar">
         <div style="display:flex; align-items:center;">
             <select id="modeSelect" onchange="changeMode(this.value)">
-                <option value="SELL">ขาย</option>
-                <option value="BUY">ซื้อ</option>
-                <option value="CHECK">เช็ค</option>
+                <option value="SELL">💰 ขาย</option>
+                <option value="BUY">🛒 ซื้อ</option>
+                <option value="CHECK">🔍 เช็ค</option>
             </select>
         </div>
 
         <select id="reportMenu" onchange="handleMenuAction(this.value)" style="padding: 5px; border-radius: 5px; max-width: 90px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid #fff;">
-            <option value="" disabled selected>📜 เมนู</option>
+            <option value="" disabled selected>📚 เมนู</option>
             <option value="force-sync" style="background:#2c3e50;">📥 อัปเดตข้อมูล</option>
-            <optgroup label="📋 พิมพ์">
+            <optgroup label="🖨️ พิมพ์">
                 <option value="print-cart">พิมพ์ ตะกร้าสินค้า</option>
                 <option value="print-today">พิมพ์ ยอดวันนี้</option>
                 <option value="print-low">พิมพ์ สต็อกใกล้หมด</option>
@@ -74,6 +74,12 @@
     <div id="sleepOverlay" onclick="wakeScanner()">💤 กดที่นี่เพื่อสแกนสินค้า</div>
     <div id="flash-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:white; opacity:0; z-index:999999; pointer-events:none; transition: opacity 0.1s;"></div>
     
+    <div style="margin-top: -3px; margin-bottom: 10px; text-align: center; position: relative; z-index: 9999;">
+        <input type="text" id="manualBarcode" 
+           placeholder="⌨️ พิมพ์ค้นหาบาร์โค้ด 6 ตัวท้าย..." 
+           style="width: 55%; height: 5px; padding: 10px; border-radius: 10px; border: 2px solid rgba(52, 152, 219, 0.5); font-size: 12px; background: rgba(232, 229, 229, 0.1); backdrop-filter: blur(5px);">
+    </div>
+
     <div id="cart">
         <h3 style="margin:0 0 4px 0;text-align:center;color:#fff;font-size:1em">😙บาร์โค้ด สินค้า😛</h3>
         <div class="cart-header"><span>รูป</span><span>บาร์โค้ด</span><span>จำนวน</span><span>ราคา</span><span>ทุน</span><span>สต็อก</span><span>ร้าน</span><span>ลบ</span></div>
