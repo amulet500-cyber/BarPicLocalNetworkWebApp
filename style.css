@@ -43,16 +43,44 @@ body { margin: 0; padding: 0; background: #000; height: 100vh; overflow: hidden;
 .preview-img { width: auto; height: 150px; object-fit: cover; border: 2px dashed #000; border-radius: 10px; margin-bottom: 10px; }
 .preview-hint { font-size: 12px; margin-top: 5px; color: #555; }
 
+/* อัปเดตใหม่: Payment Panel */
+.overlay-panel { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 999; justify-content: center; align-items: center; }
+.panel-content { background: white; padding: 15px; border-radius: 30px; width: 100%; max-width: 500px; text-align: center; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+.close-btn { position: absolute; top: 15px; right: 20px; background: none; border: none; font-size: 24px; cursor: pointer; }
+
+.highlight-text { font-size: 1.2em; font-weight: bold; color: #d32f2f; margin: 5px 0; }
+
+.grid-bank { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.grid-key { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.btn-bank { padding: 12px; border-radius: 10px; border: none; font-size: 16px; font-weight: bold; cursor: pointer; background: #3498db; color: white; }
+.btn-key { padding: 12px; border-radius: 10px; border: none; font-size: 16px; font-weight: bold; cursor: pointer; background: #ecf0f1; }
+.btn-ok { padding: 12px; border-radius: 10px; border: none; font-size: 16px; font-weight: bold; cursor: pointer; background: #27ae60; color: white; grid-column: span 2; }
+.btn-clear { padding: 15px; border-radius: 10px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; background: #e74c3c; color: white; }
+
 @media print {
-    /* ซ่อนทุกอย่างที่อยู่ใน body ยกเว้น printArea */
-    body > *:not(#printArea) {
-        display: none !important;
-    }
-    #printArea {
-        display: block !important;
-        position: absolute !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 100% !important;
-    }
+    body > *:not(#printArea) { display: none !important; }
+    #printArea { display: block !important; position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; }
+}
+
+/* ส่วนควบคุมการแสดงผลของภาพที่สแกน */
+#scan-preview-overlay {
+    position: absolute; /* เปลี่ยนเป็น absolute เพื่อให้อยู่ใน scanner-wrapper */
+    top: 80px; 
+    left: 50%; 
+    transform: translateX(-50%); 
+    width: 120px; 
+    z-index: 99999; 
+    display: none; 
+    background: transparent; 
+    opacity: 0;
+    transition: opacity 1s ease;
+}
+
+#last-scanned-img {
+    width: 100%; 
+    height: auto; 
+    border: 3px solid #f1c40f; 
+    border-radius: 10px; 
+    box-shadow: 0 0 15px rgba(0,0,0,0.5);
+    cursor: pointer;
 }

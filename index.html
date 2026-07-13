@@ -10,6 +10,22 @@
     <script src="https://unpkg.com/html5-qrcode"></script>
     <!-- ไฟล์ CSS -->
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* CSS สำหรับ Payment Panel ที่อัปเดตใหม่ */
+        .overlay-panel { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 999999; justify-content: center; align-items: center; }
+        .panel-content { background: white; padding: 25px; border-radius: 30px; width: 90%; max-width: 400px; text-align: center; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+        .close-btn { position: absolute; top: 15px; right: 20px; background: none; border: none; font-size: 24px; cursor: pointer; }
+        
+        /* เพิ่มขนาดตัวเลข 20% */
+        .highlight-text { font-size: 1.2em; font-weight: bold; color: #d32f2f; margin: 5px 0; }
+        
+        .grid-bank { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+        .grid-key { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+        .btn-bank { padding: 15px; border-radius: 10px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; background: #3498db; color: white; }
+        .btn-key { padding: 15px; border-radius: 10px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; background: #ecf0f1; }
+        .btn-ok { padding: 15px; border-radius: 10px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; background: #27ae60; color: white; grid-column: span 2; }
+        .btn-clear { padding: 15px; border-radius: 10px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; background: #e74c3c; color: white; }
+    </style>
 </head>
 <body onclick="wakeScanner()">
     
@@ -46,20 +62,18 @@
         </div>
     </div>
 
-    <!-- 🌟 เริ่มส่วนที่อัปเดตกล่องซ้อนทับ (Wrapper & Overlay) 🌟 -->
+    <!-- ส่วนที่แก้ไข: ลบ pointer-events: none ออกเพื่อให้คลิกได้ -->
     <div id="scanner-wrapper" style="position: relative; width: 100%;">
         <div id="reader" style="width: 100%;"></div>
         
-        <!-- ค้นหาบรรทัดนี้ใน index.html แล้วแก้ top และ left ดังนี้ครับ -->
-        <div id="scan-preview-overlay" style="display:none; position:absolute; top: 80px; left: 50%; transform: translateX(-50%); width:120px; z-index:99999; background:rgba(255,255,255,0.9); border:3px solid rgba(32, 245, 4, 0.89); border-radius:8px; padding:5px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); pointer-events: none;">
-            <img id="last-scanned-img" src="" style="width:100%; height:auto; border-radius:4px;">
-            <p style="color:red; text-align:center; margin:5px 0 0 0; font-size:12px; font-weight:bold;">ล่าสุด</p>
+        <div id="scan-preview-overlay">
+        <img id="last-scanned-img" src="">
         </div>
     </div>
-    <!-- 🌟 จบส่วนที่อัปเดต 🌟 -->
 
     <div id="sleepOverlay" onclick="wakeScanner()">💤 กดที่นี่เพื่อสแกนสินค้า</div>
     <div id="flash-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:white; opacity:0; z-index:999999; pointer-events:none; transition: opacity 0.1s;"></div>
+    
     <div id="cart">
         <h3 style="margin:0 0 4px 0;text-align:center;color:#fff;font-size:1em">บาร์โค้ด สินค้า</h3>
         <div class="cart-header"><span>รูป</span><span>บาร์โค้ด</span><span>จำนวน</span><span>ราคา</span><span>ทุน</span><span>สต็อก</span><span>ร้าน</span><span>ลบ</span></div>
@@ -68,8 +82,44 @@
         
         <div class="bottom-bar">
             <button id="btnCancelBtn" onclick="cancelBasket()">ยกเลิก</button>
-            <button id="btnFinish" class="btn-finish" onclick="finishSale()">ชำระเงิน</button>
+            <button id="btnFinish" class="btn-finish" onclick="openPaymentPanel()">ชำระเงิน</button>
             <button id="btnNewBarcode" onclick="showBarcodePreview(event)">📸 ถ่าย</button>
+        </div>
+    </div>
+
+    <!-- Payment Panel สำหรับชำระเงิน -->
+    <div id="paymentPanel" class="overlay-panel">
+        <div class="panel-content">
+            <button onclick="togglePayment(false)" class="close-btn">❌</button>
+            
+            <div class="status-box">
+                <h2 id="totalDisplay" style="margin: 0;">ยอดรวม: 0 บาท</h2>
+                <div class="highlight-text">รับมา: <span id="receivedDisplay">0</span> บาท</div>
+                <div class="highlight-text">ทอน: <span id="changeDisplay">0</span> บาท</div>
+            </div>
+
+            <div class="grid-bank">
+                <button class="btn-bank" onclick="addCash(10)">10</button>
+                <button class="btn-bank" onclick="addCash(20)">20</button>
+                <button class="btn-bank" onclick="addCash(50)">50</button>
+                <button class="btn-bank" onclick="addCash(100)">100</button>
+                <button class="btn-bank" onclick="addCash(500)">500</button>
+                <button class="btn-bank" onclick="addCash(1000)">1000</button>
+            </div>
+            <div class="grid-key">
+                <button class="btn-key" onclick="pressNum(1)">1</button>
+                <button class="btn-key" onclick="pressNum(2)">2</button>
+                <button class="btn-key" onclick="pressNum(3)">3</button>
+                <button class="btn-key" onclick="pressNum(4)">4</button>
+                <button class="btn-key" onclick="pressNum(5)">5</button>
+                <button class="btn-key" onclick="pressNum(6)">6</button>
+                <button class="btn-key" onclick="pressNum(7)">7</button>
+                <button class="btn-key" onclick="pressNum(8)">8</button>
+                <button class="btn-key" onclick="pressNum(9)">9</button>
+                <button class="btn-clear" onclick="clearCash()">C</button>
+                <button class="btn-key" onclick="pressNum(0)">0</button>
+                <button class="btn-ok" onclick="confirmPayment()">ชำระเงิน</button>
+            </div>
         </div>
     </div>
 
