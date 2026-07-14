@@ -33,10 +33,11 @@
 
     <div id="headerBar">
         <div style="display:flex; align-items:center;">
-            <select id="modeSelect" onchange="changeMode(this.value)">
+            <select id="modeSelect" onchange="handleMenuSelect(this)">
                 <option value="SELL">💰 ขาย</option>
                 <option value="BUY">🛒 ซื้อ</option>
                 <option value="CHECK">🔍 เช็ค</option>
+                <option value="productData">📑 สินค้า</option>
             </select>
         </div>
 
@@ -62,7 +63,6 @@
         </div>
     </div>
 
-    <!-- ส่วนที่แก้ไข: ลบ pointer-events: none ออกเพื่อให้คลิกได้ -->
     <div id="scanner-wrapper" style="position: relative; width: 100%;">
         <div id="reader" style="width: 100%;"></div>
         
@@ -129,6 +129,23 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <!-- Dialog สำหรับจัดการสินค้า -->
+    <dialog id="productDialog" style="border:none; border-radius:15px; width:90%; max-width:500px; padding:0; overflow:hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+        <div style="padding:20px;">
+            <h3 style="text-align:center; margin-top:0;">📑 จัดการสินค้า</h3>
+            <div id="productContent" style="max-height: 400px; overflow-y: auto;">
+                <p style="text-align:center;">กำลังโหลดข้อมูล...</p>
+            </div>
+            <button onclick="document.getElementById('productDialog').close()" 
+                    style="width:100%; padding:12px; background:#e74c3c; color:white; border:none; border-radius:5px; margin-top:15px; font-weight:bold;">
+                ปิดหน้าต่าง
+            </button>
+        </div>
+    </dialog>
+
+    <script src="script1.js"></script> <!-- ต้องใส่ไฟล์นี้ก่อน -->
+    <script src="script2.js"></script> <!-- ไฟล์นี้ถึงจะรู้จักตัวแปรจากไฟล์แรก -->
 </body>
 </html>
+
+
