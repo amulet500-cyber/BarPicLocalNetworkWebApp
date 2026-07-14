@@ -23,24 +23,69 @@ function printCartReceipt() {
 }
 
 function resetIdleTimer(){clearTimeout(idleTimer); idleTimer=setTimeout(sleepScanner,300000)}
-function sleepScanner(){if(isScanning){html5QrcodeScanner.clear().then(()=>{isScanning=false;document.getElementById('sleepOverlay').style.display='flex';showStatus("💤 พักสแกนเนอร์")})}}
-function wakeScanner(){
-    if(!isScanning){
-        isScanning=true;
-        document.getElementById('sleepOverlay').style.display='none';
-        showStatus("📷 พร้อมสแกน");
-        html5QrcodeScanner.render(onScanSuccess);
-        resetIdleTimer();
+
+// ==========================================
+// 1. ฟังก์ชันสั่งหลับ (เรียกใช้ตอนกดหัวข้อ บาร์โค้ด สินค้า)
+// ==========================================
+// ฟังก์ชันสั่งหลับ (เวอร์ชันบล็อกแรงคลิกทะลุ)
+function sleepScanner(e) {
+    // 🌟 บล็อกแรงคลิกทันที ไม่ให้ลามไปโดน body ข้างบน!
+    if (e && typeof e.stopPropagation === 'function') {
+        e.stopPropagation();
     }
-    if('speechSynthesis' in window) window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+
+    if (isScanning) {
+        html5QrcodeScanner.clear().then(() => {
+            isScanning = false;
+            document.getElementById('sleepOverlay').style.display = 'flex';
+            showStatus("💤 พักสแกนเนอร์");
+        }).catch(err => console.error("Sleep Error:", err));
+    }
 }
-setInterval(()=>{
-    const n=new Date();
-    const dateStr = n.toLocaleDateString('th-TH',{weekday:'short', day:'numeric', month:'short', year:'numeric'});
-    const timeStr = n.toLocaleTimeString('th-TH',{hour:'2-digit', minute:'2-digit', second:'2-digit'});
-    document.getElementById('clock').innerText = dateStr + ' ' + timeStr;
-    document.getElementById('versionTag').innerText = APP_VERSION;
+
+// ==========================================
+// 2. ฟังก์ชันสั่งตื่น (เรียกใช้ตอนกด sleepOverlay หน้าจอสีดำ)
+// ==========================================
+function wakeScanner() {
+    if (!isScanning) {
+        isScanning = true;
+        document.getElementById('sleepOverlay').style.display = 'none';
+        showStatus("📷 พร้อมสแกน");
+        
+        // สั่งให้กล้องกลับมาทำงานใหม่
+        html5QrcodeScanner.render(onScanSuccess);
+        
+        // ตรวจสอบตัวจับเวลา Idle ก่อนเรียกใช้เพื่อกัน Error
+        if (typeof resetIdleTimer === 'function') {
+            resetIdleTimer();
+        }
+    }
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.speak(new SpeechSynthesisUtterance(''));
+    }
+}
+
+// ==========================================
+// 3. ระบบแสดงเวลาและเวอร์ชันของแอป (ทำงานทุกๆ 1 วินาที)
+// ==========================================
+setInterval(() => {
+    const n = new Date();
+    const dateStr = n.toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    const timeStr = n.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    
+    const clockEl = document.getElementById('clock');
+    const versionEl = document.getElementById('versionTag');
+    
+    if (clockEl) {
+        clockEl.innerText = dateStr + ' ' + timeStr;
+    }
+    if (versionEl && typeof APP_VERSION !== 'undefined') {
+        versionEl.innerText = APP_VERSION;
+    }
 }, 1000);
+
+
+
 function showStatus(m){const s=document.getElementById("statusMessage");s.innerText=m;setTimeout(()=>{s.innerText=""},3000)}
 async function loadSheetData() {
     if(!navigator.onLine) {
@@ -382,6 +427,7 @@ document.getElementById("scan-preview-overlay").addEventListener("click", functi
         this.style.display = "none"; // หลังจาก Fade out ครบ 0.5 วินาที ให้ซ่อนไปเลย
     }, 500);
 });
+
 
 
 window.addEventListener('online', () => {
