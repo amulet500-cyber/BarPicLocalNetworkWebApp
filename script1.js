@@ -1,10 +1,10 @@
 /**
- * Shop System - v.3.04
+ * Shop System - v.5.01
  * อัปเดต: ปรับปรุงการจัดการ Error ในฟังก์ชันสื่อสารกับ Google Script
  * และจัดการสถานะการสแกนให้แม่นยำขึ้น
  */
 
-const APP_VERSION = "v.4.01"; 
+const APP_VERSION = "v.5.01"; 
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyEihh74c75U_dnHvrWhCM801b3f78p10ltJrrdZLhkn81Sl3qyb78LoQyq6zQ4FfPZ/exec";
 
 // Initializing Database
