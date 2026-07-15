@@ -73,3 +73,30 @@ body { margin: 0; padding: 0; background: #000; height: 100vh; overflow: hidden;
     box-shadow: 0 0 15px rgba(0,0,0,0.5);
     cursor: pointer;
 }
+
+
+/* เพิ่มความนุ่มนวลตอนขยาย-หด ให้กับคลาส .item-input เดิม */
+.item-input {
+    transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+/* ตั้งค่าเมื่อช่อง Input ถูกจิ้มใช้งาน (Focus) */
+.item-input:focus {
+    transform: scale(2.2); /* ขยายขนาด 2.2 เท่า (ศิษย์พี่ปรับตัวเลขได้ตามต้องการ) */
+    z-index: 99999; /* ดันให้ลอยขึ้นมาอยู่ชั้นบนสุด จะได้ไม่โดนแถวอื่นบัง */
+    position: relative;
+    background-color: #ffffff; /* เปลี่ยนพื้นหลังเป็นสีขาวชั่วคราวให้มองง่าย */
+    color: #000000; /* เปลี่ยนตัวเลขเป็นสีดำจะได้ตัดกับพื้นขาว */
+    border: 2px solid #e74c3c; /* ใส่ขอบสีแดงให้เด่นชัดว่ากำลังแก้ช่องนี้ */
+    box-shadow: 0 10px 25px rgba(0,0,0,0.9); /* เพิ่มมิติเงาให้ลอยขึ้นมา */
+    outline: none; /* ซ่อนเส้นขอบสีฟ้าของเบราว์เซอร์ปกติ */
+}
+
+/* บังคับล้างค่าเบลอทิ้งสำหรับช่องทุนที่ไม่ใช่โหมดขาย */
+.cost-input:not(.hidden-cost) {
+    filter: none !important;      /* ล้างค่า blur ทิ้ง */
+    opacity: 1 !important;        /* ล้างค่าโปร่งใสทิ้ง */
+    color: #fff !important;       /* คืนค่าสีตัวอักษร */
+    background: rgba(0,0,0,0.3) !important; /* คืนค่าพื้นหลัง */
+    pointer-events: auto !important; /* ให้กดพิมพ์ได้ปกติ */
+}

@@ -25,6 +25,41 @@
         .btn-key { padding: 15px; border-radius: 10px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; background: #ecf0f1; }
         .btn-ok { padding: 15px; border-radius: 10px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; background: #27ae60; color: white; grid-column: span 2; }
         .btn-clear { padding: 15px; border-radius: 10px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; background: #e74c3c; color: white; }
+
+        /* =========================================
+           ส่วนที่อัปเดตเพิ่ม: ขยายช่องกรอกข้อมูล & เบลอราคาทุน 
+           ========================================= */
+        
+        /* เอฟเฟกต์ขยาย-หด สำหรับทุกช่องกรอกข้อมูลในตาราง */
+        .item-input {
+            transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease !important;
+        }
+        
+        /* เมื่อช่องถูกจิ้ม (Focus) ให้ขยายร่างและลอยขึ้นมา */
+        .item-input:focus {
+            transform: scale(2.2) !important;
+            z-index: 99999 !important;
+            position: relative !important;
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            border: 2px solid #e74c3c !important;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.9) !important;
+            outline: none !important;
+        }
+
+        /* เอฟเฟกต์เบลอช่อง "ทุน" (เวลาลูกค้ามอง) */
+        .cost-input {
+            color: transparent !important;
+            text-shadow: 0 0 6px rgba(255, 255, 255, 0.8) !important;
+            transition: all 0.2s ease !important;
+        }
+
+        /* เมื่อจิ้มที่ช่อง "ทุน" ให้ตัวเลขชัดเจนขึ้นพร้อมขยายร่าง */
+        .cost-input:focus {
+            color: #000000 !important;
+            text-shadow: none !important;
+        }
+        /* ========================================= */
     </style>
 </head>
 <body onclick="wakeScanner()">
@@ -146,7 +181,21 @@
 
     <script src="script1.js"></script> <!-- ต้องใส่ไฟล์นี้ก่อน -->
     <script src="script2.js"></script> <!-- ไฟล์นี้ถึงจะรู้จักตัวแปรจากไฟล์แรก -->
+
+    <!-- โค้ดดักจับการกด Enter เพื่อให้ช่องหดกลับ -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const itemList = document.getElementById('itemList');
+            if(itemList) {
+                itemList.addEventListener('keydown', function(event) {
+                    if (event.target && event.target.classList.contains('item-input')) {
+                        if (event.key === 'Enter') {
+                            event.target.blur(); // บังคับให้ช่องหดกลับ
+                        }
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>
-
-

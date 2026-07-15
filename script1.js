@@ -299,9 +299,12 @@ async function onScanSuccess(d) {
     // 1. ดึงภาพจากกล้องทันทีเพื่อใช้แสดงผลเบื้องต้น
     let snapImg = takeSnapshot(); 
 
-    // 2. จัดการข้อมูลตะกร้า (อัปเดตด้วย snapImg ไปก่อน)
+    // 2. จัดการข้อมูลตะกร้า
     if(groupedItems[d]){ 
-        await changeQty(d, parseInt(groupedItems[d].qty) + 1);
+        // 🌟 แก้ไข: ถ้าไม่ใช่โหมด CHECK ถึงจะยอมให้บวกจำนวนเพิ่ม
+        if (mode !== 'CHECK') {
+            await changeQty(d, parseInt(groupedItems[d].qty) + 1);
+        }
     } else { 
         let product = await db.products.get(d); 
         let p = product ? product.price : 0;
@@ -326,14 +329,9 @@ async function onScanSuccess(d) {
         .then(res => res.text())
         .then(imageUrl => {
             if (imageUrl && imageUrl !== "NOT_FOUND" && imageUrl !== "") {
-                // อัปเดตข้อมูลใน object
                 if (groupedItems[d]) {
                     groupedItems[d].img = imageUrl;
-                    
-                    // อัปเดตรูปในรายการ (List)
                     refreshList(); 
-                    
-                    // 🌟 เพิ่มเติม: ถ้ากล่องพรีวิวเปิดอยู่ ให้เปลี่ยนรูปในกล่องพรีวิวด้วย!
                     const overlay = document.getElementById("scan-preview-overlay");
                     const overlayImg = document.getElementById("last-scanned-img");
                     if (overlay && overlay.style.display === "flex" && overlayImg) {
@@ -350,7 +348,7 @@ async function onScanSuccess(d) {
 
     if (overlay && overlayImg) {
         if (previewTimer) clearTimeout(previewTimer);
-        overlayImg.src = snapImg; // แสดงรูปจากกล้องก่อน
+        overlayImg.src = snapImg;
         overlay.style.display = "flex";
         overlay.style.opacity = "1"; 
         
@@ -366,13 +364,13 @@ async function onScanSuccess(d) {
         }, 9000); 
     }
 
-    // แจ้งเตือนสินค้าใกล้หมด
+    // แจ้งเตือนสินค้าใกล้หมด (เฉพาะโหมดขาย)
     if (mode === 'SELL') {
         let currentStock = parseInt(groupedItems[d].stock) || 0;
         if (currentStock <= 5) speakText("สินค้านี้ใกล้หมดครับ เหลือ " + currentStock + " ชิ้น");
     }
 
-    // Highlight รายการ
+    // Highlight รายการ (ทำงานทุกโหมดที่สแกนเจอ)
     setTimeout(() => {
         const listItems = document.getElementById("itemList").getElementsByClassName("item-row");
         for (let item of listItems) {
@@ -387,7 +385,10 @@ async function onScanSuccess(d) {
 
     updateBarcodeTitle();
     html5QrcodeScanner.pause(); 
-    showStatus("✅ เพิ่มลงตะกร้าแล้ว"); 
+    
+    // แจ้งสถานะ
+    showStatus(mode === 'CHECK' ? "✅ ตรวจสอบรายการสำเร็จ" : "✅ เพิ่มลงตะกร้าแล้ว"); 
+    
     updateCameraButton(); 
     
     setTimeout(() => {
