@@ -1,7 +1,7 @@
 /**
  * Shop System - v.5.01
  * อัปเดต: ปรับปรุงการจัดการ Error ในฟังก์ชันสื่อสารกับ Google Script
- * และจัดการสถานะการสแกนให้แม่นยำขึ้น
+ * และจัดการสถานะการสแกนให้แม่นยำขึ้น + เพิ่มปุ่มสลับเต็มจอขนาดเล็กใต้นาฬิกา
  */
 
 const APP_VERSION = "v.5.01"; 
@@ -42,8 +42,83 @@ function speakText(text) {
     }
 }
 
+// 🌟 ฟังก์ชันสลับโหมด เต็มจอ / หน้าจอปกติ (Fullscreen Toggle)
+function toggleFullScreen() {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+        let elem = document.documentElement;
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen();
+        } else if (elem.webkitRequestFullscreen) { /* Safari */
+            elem.webkitRequestFullscreen();
+        } else if (elem.msRequestFullscreen) { /* IE11 */
+            elem.msRequestFullscreen();
+        }
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+            document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+            document.msExitFullscreen();
+        }
+    }
+}
+
+// 🌟 ฟังก์ชันสร้างปุ่มย่อขยายเต็มจอขนาดเล็ก ไว้ใต้ตำแหน่งนาฬิกาขวาบน
+function initSmallFullScreenButton() {
+    // ป้องกันการสร้างซ้ำถ้ามีปุ่มเดิมอยู่แล้ว
+    if (document.getElementById('btn-fullscreen-toggle')) return;
+
+    const btn = document.createElement('button');
+    btn.id = 'btn-fullscreen-toggle';
+    btn.innerHTML = '⛶ เต็มจอ';
+    
+    // ตั้งค่า Style ให้เป็นปุ่มเล็กๆ กะทัดรัด ลอยอยู่ใต้มุมขวาของแถบเขียว
+    btn.style.position = 'fixed';
+    btn.style.top = '52px'; // ระยะดิ่งลงมาจากขอบบน ให้พ้นแนวแถบเมนูสีเขียวพอดี
+    btn.style.right = '10px'; // ชิดขวาใต้นาฬิกา
+    btn.style.padding = '4px 10px';
+    btn.style.fontSize = '12px';
+    btn.style.fontWeight = 'bold';
+    btn.style.backgroundColor = 'rgba(0, 0, 0, 0.65)'; // ดำโปร่งแสงเนียนๆ
+    btn.style.color = '#ffffff';
+    btn.style.border = '1px solid rgba(255, 255, 255, 0.4)';
+    btn.style.borderRadius = '6px';
+    btn.style.zIndex = '99999';
+    btn.style.cursor = 'pointer';
+    btn.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+    btn.style.transition = 'all 0.2s ease';
+    
+    // ฟังก์ชันอัปเดตข้อความและสีบนปุ่มตามสถานะจริงของหน้าจอ
+    const updateBtnState = () => {
+        if (document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement) {
+            btn.innerHTML = '⛶ ย่อจอ';
+            btn.style.backgroundColor = 'rgba(192, 57, 43, 0.8)'; // เปลี่ยนเป็นสีแดงตอนเต็มจอ เผื่ออยากกดออก
+        } else {
+            btn.innerHTML = '⛶ เต็มจอ';
+            btn.style.backgroundColor = 'rgba(0, 0, 0, 0.65)';
+        }
+    };
+
+    // ดักจับ Event เมื่อกดปุ่ม
+    btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleFullScreen();
+    });
+
+    // ดักจับสถานะจากระบบ เผื่อศิษย์พี่กดปุ่ม Back หรือกด Exit จากแป้นพิมพ์ ข้อความปุ่มจะได้เปลี่ยนตามอัตโนมัติ
+    document.addEventListener('fullscreenchange', updateBtnState);
+    document.addEventListener('webkitfullscreenchange', updateBtnState);
+    document.addEventListener('msfullscreenchange', updateBtnState);
+
+    document.body.appendChild(btn);
+}
+
 // --- Input Logic ---
 document.addEventListener('DOMContentLoaded', () => {
+    // 🌟 เรียกใช้งานปุ่มเต็มจอจิ๋วทันทีที่หน้าเว็บพร้อมใช้งาน
+    initSmallFullScreenButton();
+
     const inputField = document.getElementById("manualBarcode");
     
     if (inputField) {
@@ -104,35 +179,26 @@ function applyModeColor(mode){
 }
 
 function changeMode(m) {
-    // บันทึกค่าโหมดลงหน่วยความจำ
     localStorage.setItem('zenMode', m);
-    
-    // เปลี่ยนสีตามโหมด
     applyModeColor(m);
 
-    // กำหนดชื่อโหมดภาษาไทยสำหรับการแสดงผลและเสียงพูด
     const modeLabels = {
         'SELL': 'ขายสินค้า',
         'BUY': 'รับเข้า',
         'CHECK': 'เช็คสต๊อก'
     };
-    const displayName = modeLabels[m] || m; // ถ้าไม่ตรงกับ list ให้แสดงค่า m เดิม
+    const displayName = modeLabels[m] || m;
 
-    // แสดงสถานะบนหน้าจอ
     showStatus("โหมด: " + displayName);
 
-    // เพิ่มฟังก์ชันเสียงพูด (ถ้ามีฟังก์ชันนี้ในระบบ)
     if (typeof speakText === 'function') {
         speakText("โหมด " + displayName);
     }
 
-    // เรียกฟังก์ชันต่างๆ โดยมีการตรวจสอบว่ามีอยู่จริงหรือไม่
     if (typeof calculateTotal === 'function') calculateTotal();
     if (typeof refreshList === 'function') refreshList();
     if (typeof updateCameraButton === 'function') updateCameraButton();
 }
-
-
 
 // --- Camera & Preview Logic ---
 function updateCameraButton() {
@@ -226,6 +292,7 @@ function executePrint(event) {
     }, 1000);
 }
 
+// --- Sync & Storage ---
 function cancelPreview(event) {
     if(event) event.stopPropagation();
     const printArea = document.getElementById("printArea");
@@ -237,7 +304,6 @@ function resetButtonToCameraMode() {
     updateCameraButton(); 
 }
 
-// --- Sync & Storage ---
 function captureAndSaveToDrive(event, barcodeText) {
     const flash = document.getElementById('flash-overlay'); 
     if (flash) { flash.style.opacity = 1; setTimeout(() => flash.style.opacity = 0, 100); }
@@ -296,12 +362,9 @@ async function onScanSuccess(d) {
     
     let mode = localStorage.getItem('zenMode') || 'SELL';
     
-    // 1. ดึงภาพจากกล้องทันทีเพื่อใช้แสดงผลเบื้องต้น
     let snapImg = takeSnapshot(); 
 
-    // 2. จัดการข้อมูลตะกร้า
     if(groupedItems[d]){ 
-        // 🌟 แก้ไข: ถ้าไม่ใช่โหมด CHECK ถึงจะยอมให้บวกจำนวนเพิ่ม
         if (mode !== 'CHECK') {
             await changeQty(d, parseInt(groupedItems[d].qty) + 1);
         }
@@ -324,7 +387,6 @@ async function onScanSuccess(d) {
         calculateTotal(); 
     }
 
-    // 3. เริ่มดึงรูปจาก Google Drive แบบเบื้องหลัง
     fetch(GOOGLE_SCRIPT_URL + "?mode=GET_IMAGE_URL&barcode=" + d)
         .then(res => res.text())
         .then(imageUrl => {
@@ -342,7 +404,6 @@ async function onScanSuccess(d) {
         })
         .catch(err => console.log("Background image fetch skipped:", err));
 
-    // 4. ระบบ Preview
     const overlay = document.getElementById("scan-preview-overlay");
     const overlayImg = document.getElementById("last-scanned-img");
 
@@ -364,13 +425,11 @@ async function onScanSuccess(d) {
         }, 9000); 
     }
 
-    // แจ้งเตือนสินค้าใกล้หมด (เฉพาะโหมดขาย)
     if (mode === 'SELL') {
         let currentStock = parseInt(groupedItems[d].stock) || 0;
         if (currentStock <= 5) speakText("สินค้านี้ใกล้หมดครับ เหลือ " + currentStock + " ชิ้น");
     }
 
-    // Highlight รายการ (ทำงานทุกโหมดที่สแกนเจอ)
     setTimeout(() => {
         const listItems = document.getElementById("itemList").getElementsByClassName("item-row");
         for (let item of listItems) {
@@ -386,7 +445,6 @@ async function onScanSuccess(d) {
     updateBarcodeTitle();
     html5QrcodeScanner.pause(); 
     
-    // แจ้งสถานะ
     showStatus(mode === 'CHECK' ? "✅ ตรวจสอบรายการสำเร็จ" : "✅ เพิ่มลงตะกร้าแล้ว"); 
     
     updateCameraButton(); 
@@ -440,22 +498,16 @@ async function handleMenuAction(action) {
 
 function handleMenuSelect(selectElement) {
     const value = selectElement.value;
-    
-    // ตรวจสอบว่าเป็น "สินค้า" (productData) หรือไม่
     if (value === "productData") {
-        // ตรวจสอบว่ามีฟังก์ชัน showProductData หรือไม่ก่อนเรียกใช้
         if (typeof showProductData === 'function') {
             showProductData(); 
         } else {
             console.warn("ยังไม่ได้สร้างฟังก์ชัน showProductData ครับ");
             alert("ฟังก์ชันแสดงข้อมูลสินค้ายังไม่พร้อมใช้งาน");
         }
-        
-        // คืนค่า Dropdown กลับไปที่โหมดเดิมที่ใช้งานอยู่ (ป้องกันค่าค้าง)
         const lastMode = localStorage.getItem('zenMode') || 'SELL';
         selectElement.value = lastMode; 
     } else {
-        // ถ้าไม่ใช่เมนูสินค้า ให้ทำงานตามฟังก์ชันเปลี่ยนโหมดปกติ
         changeMode(value);
     }
 }
@@ -465,17 +517,14 @@ async function showProductData() {
     const content = document.getElementById('productContent');
     
     dialog.showModal();
-    // 1. ช่องค้นหา
     content.innerHTML = `
         <input type="text" id="searchProduct" placeholder="🔍 ค้นหาบาร์โค้ด ชื่อ หรือร้านส่ง..." 
                style="width:90%; padding:10px; margin-bottom:10px; border-radius:8px; border:1px solid #ccc; font-size: 16px;">
         <div id="tableContainer" style="max-height: 400px; overflow-y: auto;">กำลังโหลดข้อมูล...</div>
     `;
     
-    // 2. ดึงข้อมูล
     const products = await db.products.toArray();
 
-    // 3. ฟังก์ชันวาดตาราง
     const renderTable = (filter = '') => {
         const container = document.getElementById('tableContainer');
         const filtered = products.filter(p => 
@@ -516,7 +565,6 @@ async function showProductData() {
 
     renderTable();
 
-    // Event ฟังตอนพิมพ์
     document.getElementById('searchProduct').addEventListener('input', (e) => {
         renderTable(e.target.value);
     });
@@ -527,7 +575,6 @@ async function loadProductList() {
     content.innerHTML = '<p style="text-align:center;">กำลังโหลด...</p>';
 
     try {
-        // ดึงข้อมูลทั้งหมดจากตาราง 'products' (เปลี่ยนชื่อตารางตามที่ศิษย์พี่ตั้งจริงใน Dexie นะขอรับ)
         const products = await db.products.toArray(); 
         
         if (products.length === 0) {
@@ -535,7 +582,6 @@ async function loadProductList() {
             return;
         }
 
-        // สร้างตารางแสดงผล
         let html = '<table style="width:100%; border-collapse: collapse; font-size: 14px;">';
         html += '<thead><tr style="background:#f2f2f2;"><th>สินค้า</th><th>ราคา</th></tr></thead><tbody>';
         
