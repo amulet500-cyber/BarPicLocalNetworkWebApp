@@ -50,10 +50,9 @@ body { margin: 0; padding: 0; background: #000; height: 100vh; overflow: hidden;
 #printArea { display: none; position: fixed; top: 35px; left: 0; width: 100%; height: 45vh; z-index: 250; background: #fff; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
 @media print { body > *:not(#printArea) { display: none !important; } #printArea { display: block !important; position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; } }
 
-/* --- อัปเดต Scan Preview ให้ลอยเต็มจอและเด่นชัดขึ้น --- */
-/* ส่วนควบคุมการแสดงผลของภาพที่สแกน */
+/* --- ปรับแต่งโครงสร้าง Scan Preview ปกติทั่วไป --- */
 #scan-preview-overlay {
-    position: absolute; /* เปลี่ยนเป็น absolute เพื่อให้อยู่ใน scanner-wrapper */
+    position: absolute;
     top: 80px; 
     left: 50%; 
     transform: translateX(-50%); 
@@ -62,7 +61,7 @@ body { margin: 0; padding: 0; background: #000; height: 100vh; overflow: hidden;
     display: none; 
     background: transparent; 
     opacity: 0;
-    transition: opacity 1s ease;
+    transition: opacity 0.4s ease;
 }
 
 #last-scanned-img {
@@ -74,29 +73,28 @@ body { margin: 0; padding: 0; background: #000; height: 100vh; overflow: hidden;
     cursor: pointer;
 }
 
-
-/* เพิ่มความนุ่มนวลตอนขยาย-หด ให้กับคลาส .item-input เดิม */
-.item-input {
-    transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+/* เพิ่มคลาสสไตล์สำหรับกางรูปแบบขยายใหญ่กลางจอ ไม่ขัดขวางหัวกล้องด้านบน */
+#scan-preview-overlay.cart-preview-active {
+    position: fixed;
+    top: 45vh; 
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 65vw; 
+    max-width: 280px;
+    z-index: 999999;
 }
 
-/* ตั้งค่าเมื่อช่อง Input ถูกจิ้มใช้งาน (Focus) */
-.item-input:focus {
-    transform: scale(2.2); /* ขยายขนาด 2.2 เท่า (ศิษย์พี่ปรับตัวเลขได้ตามต้องการ) */
-    z-index: 99999; /* ดันให้ลอยขึ้นมาอยู่ชั้นบนสุด จะได้ไม่โดนแถวอื่นบัง */
-    position: relative;
-    background-color: #ffffff; /* เปลี่ยนพื้นหลังเป็นสีขาวชั่วคราวให้มองง่าย */
-    color: #000000; /* เปลี่ยนตัวเลขเป็นสีดำจะได้ตัดกับพื้นขาว */
-    border: 2px solid #e74c3c; /* ใส่ขอบสีแดงให้เด่นชัดว่ากำลังแก้ช่องนี้ */
-    box-shadow: 0 10px 25px rgba(0,0,0,0.9); /* เพิ่มมิติเงาให้ลอยขึ้นมา */
-    outline: none; /* ซ่อนเส้นขอบสีฟ้าของเบราว์เซอร์ปกติ */
+#scan-preview-overlay.cart-preview-active #last-scanned-img {
+    border: 5px solid #2ecc71; 
+    border-radius: 16px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.8);
 }
 
 /* บังคับล้างค่าเบลอทิ้งสำหรับช่องทุนที่ไม่ใช่โหมดขาย */
 .cost-input:not(.hidden-cost) {
-    filter: none !important;      /* ล้างค่า blur ทิ้ง */
-    opacity: 1 !important;        /* ล้างค่าโปร่งใสทิ้ง */
-    color: #fff !important;       /* คืนค่าสีตัวอักษร */
-    background: rgba(0,0,0,0.3) !important; /* คืนค่าพื้นหลัง */
-    pointer-events: auto !important; /* ให้กดพิมพ์ได้ปกติ */
+    filter: none !important;      
+    opacity: 1 !important;        
+    color: #fff !important;       
+    background: rgba(0,0,0,0.3) !important; 
+    pointer-events: auto !important; 
 }
