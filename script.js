@@ -1,10 +1,9 @@
 /**
- * Shop System - v.5.04 (Optimized Edition with Server Sync)
+ * Shop System - v.5.09 (Optimized Edition with Server Sync)
  */
 
-const APP_VERSION = "v.5.04"; 
+const APP_VERSION = "v.5.09"; 
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyEihh74c75U_dnHvrWhCM801b3f78p10ltJrrdZLhkn81Sl3qyb78LoQyq6zQ4FfPZ/exec";
-// จุดที่ 4: ที่อยู่ IP เครื่องคอม Server แม่ (VB 2022) เปิดพอร์ต 8080 ในวง Wi-Fi เดียวกัน
 const SERVER_IP = "http://192.168.1.50:8080/"; 
 
 // Initializing Database
@@ -44,7 +43,6 @@ function speakText(text) {
     }
 }
 
-// 🌟 ฟังก์ชันสลับโหมด เต็มจอ / หน้าจอปกติ
 function toggleFullScreen() {
     if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
         let elem = document.documentElement;
@@ -66,7 +64,6 @@ function toggleFullScreen() {
     }
 }
 
-// 🌟 ฟังก์ชันสร้างปุ่มย่อขยายเต็มจอขนาดเล็ก
 function initSmallFullScreenButton() {
     if (document.getElementById('btn-fullscreen-toggle')) return;
 
@@ -343,14 +340,13 @@ function captureAndSaveToDrive(event, barcodeText) {
     });
 }
 
-// --- จุดที่ 1 & จุดที่ 4: Main Scan Logic ---
+// --- Main Scan Logic ---
 async function onScanSuccess(d) {
     if (isProcessing) return; 
     isProcessing = true; 
     
     html5QrcodeScanner.pause(); 
 
-    // 🌟 [จุดที่ 4] ยิงรหัสบาร์โค้ดเข้าเครื่องคอมพิวเตอร์ Server แม่ (VB 2022) ทันทีผ่าน Wi-Fi
     fetch(SERVER_IP, {
         method: 'POST',
         mode: 'cors',
@@ -362,11 +358,10 @@ async function onScanSuccess(d) {
     
     let product = await db.products.get(d);
     let isExistingProduct = (!!product) || (groupedItems[d] !== undefined);
-    let resumeDelay = 800; // ค่าเริ่มต้นสำหรับการสแกนชิ้นใหม่ที่แม่นยำ
+    let resumeDelay = 800; 
 
     if (isExistingProduct) {
         if (groupedItems[d]) {
-            // 🌟 [จุดที่ 1] กรณีบาร์โค้ดซ้ำเดิมในบิล ให้สแกนติดช้าลง หน่วง 1.2 วินาที (1200ms)
             resumeDelay = 1200; 
             new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
             
@@ -374,7 +369,6 @@ async function onScanSuccess(d) {
                 await changeQty(d, parseInt(groupedItems[d].qty) + 1);
             }
         } else {
-            // 🌟 [จุดที่ 1] มีสินค้าในคลังสแกนครั้งแรก ความไวสูงสุดและแม่นยำสุด 0.8 วินาที (800ms)
             resumeDelay = 800; 
             new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg').play();
             
@@ -396,7 +390,6 @@ async function onScanSuccess(d) {
         }
         showStatus(mode === 'CHECK' ? "✅ ตรวจสอบรายการสำเร็จ" : "✅ เพิ่มลงตะกร้าแล้ว");
     } else {
-        // 🌟 [จุดที่ 1] สินค้าใหม่ไม่มีในข้อมูล ลดความเร็วลงโดยการหน่วง 2 วินาที (2000ms) พร้อมพูดแจ้งเตือน
         resumeDelay = 2000; 
         speakText("สินค้าใหม่ บาร์โค้ดนี้ยังไม่มีข้อมูลค่ะ");
         
@@ -408,7 +401,6 @@ async function onScanSuccess(d) {
         showStatus("✨ พบสินค้าใหม่! กรุณากรอกข้อมูล");
     }
 
-    // ส่วนดึงรูปภาพจาก Cloud Background Sync
     fetch(GOOGLE_SCRIPT_URL + "?mode=GET_IMAGE_URL&barcode=" + d)
         .then(res => res.text())
         .then(imageUrl => {
@@ -426,7 +418,6 @@ async function onScanSuccess(d) {
         })
         .catch(err => console.log("Background image fetch skipped:", err));
 
-    // ส่วนแสดงภาพป็อปอัปพรีวิว
     const overlay = document.getElementById("scan-preview-overlay");
     const overlayImg = document.getElementById("last-scanned-img");
     if (overlay && overlayImg) {
@@ -452,7 +443,6 @@ async function onScanSuccess(d) {
         if (currentStock <= 5) speakText("สินค้านี้ใกล้หมดครับ เหลือ " + currentStock + " ชิ้น");
     }
 
-    // Auto Scroll ไปที่แถวล่าสุด
     setTimeout(() => {
         const listItems = document.getElementById("itemList").getElementsByClassName("item-row");
         for (let item of listItems) {
@@ -530,7 +520,6 @@ function handleMenuSelect(selectElement) {
     }
 }
 
-// โครงสร้างตารางแสดงผลคลังสินค้าขนาด 20k แถว ด้วยระบบ Lazy Loading / Infinite Scroll
 async function showProductData() {
     const dialog = document.getElementById('productDialog');
     const content = document.getElementById('productContent');
@@ -680,7 +669,6 @@ function showStatus(m){
     }
 }
 
-// 🌟 [จุดที่ 2] ปรับปรุงระบบจัดการทรัพยากร ปล่อย Memory เมื่อทำทาสก์เสร็จสิ้น
 async function loadSheetData() {
     if(!navigator.onLine) {
         showStatus("📵 ออฟไลน์: ใช้ฐานข้อมูลในเครื่อง");
@@ -699,7 +687,6 @@ async function loadSheetData() {
         await db.products.bulkPut(productArray); 
         showStatus("✅ อัปเดตฐานข้อมูลสำเร็จ (พร้อมใช้งานล่าสุด)");
         
-        // คืนหน่วยความจำวัตถุขนาดใหญ่
         productArray = null;
         data = null;
     } catch (error) { 
@@ -939,6 +926,7 @@ async function confirmPayment() {
     await finishSale(change, currentReceived); 
 }
 
+// 🌟 ปรับปรุง: ย้ายตำแหน่งการเคลียร์ค่าตะกร้าไปไว้ด้านล่างสุดหลังจากเซฟลงตู้เซฟในเครื่องสำเร็จแล้ว
 async function finishSale(change = 0, received = 0) { 
     if(Object.keys(groupedItems).length === 0) return showStatus("ยังไม่มีสินค้าในตะกร้า!"); 
     
@@ -949,10 +937,6 @@ async function finishSale(change = 0, received = 0) {
     });
 
     const backupItems = { ...groupedItems }; 
-    groupedItems = {}; 
-    refreshList(); 
-    calculateTotal(); 
-    updateCameraButton();
 
     try {
         let batch1 = allItems.slice(0, 16); 
@@ -965,7 +949,15 @@ async function finishSale(change = 0, received = 0) {
             total: currentTotal, received: received, change: change, timestamp: Date.now() 
         };
         
+        // 🔒 บันทึกลงฐานข้อมูลออฟไลน์ในเครื่องให้สำเร็จก่อน!
         await db.pendingSales.add(billData);
+        
+        // 🧼 เมื่อปลอดภัยชัวร์แล้ว ค่อยทำการเคลียร์หน้าจอและตะกร้าสินค้าทิ้ง
+        groupedItems = {}; 
+        refreshList(); 
+        calculateTotal(); 
+        updateCameraButton();
+
         if (mode === 'SELL') {
             speakText(`ยอดรวม ${currentTotal} บาท รับเงิน ${received} บาท ทอน ${change} บาท ขอบคุณครับ`);
         } else {
@@ -975,7 +967,6 @@ async function finishSale(change = 0, received = 0) {
         syncPendingSales();
         showStatus("✅ บันทึกการขายเรียบร้อย");
         
-        // 🌟 [จุดที่ 2] เคลียร์ References หน่วยความจำก้อนใหญ่หลังส่งเสร็จสิ้น
         billData = null;
         itemsToSync = null;
     } catch (error) {
@@ -1008,7 +999,6 @@ function openPaymentPanel() {
     }
 }
 
-// ฟังก์ชันแสดงพรีวิวภาพขยายใหญ่ขนาดกลางจอ ไม่บังกล้องบน จางหายเองใน 3 วินาที หรือคลิกเพื่อปิดทันที
 function openImageFromCart(imgSrc) {
     const overlay = document.getElementById("scan-preview-overlay");
     const overlayImg = document.getElementById("last-scanned-img");
