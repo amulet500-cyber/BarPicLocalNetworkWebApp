@@ -1,8 +1,8 @@
 /**
- * Shop System - v.5.09 (Optimized Edition with Server Sync)
+ * Shop System - v.5.19 (Optimized Edition with Server Sync)
  */
 
-const APP_VERSION = "v.5.09"; 
+const APP_VERSION = "v.5.19"; 
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyEihh74c75U_dnHvrWhCM801b3f78p10ltJrrdZLhkn81Sl3qyb78LoQyq6zQ4FfPZ/exec";
 const SERVER_IP = "http://192.168.1.50:8080/"; 
 
