@@ -347,11 +347,7 @@ async function onScanSuccess(d) {
     
     html5QrcodeScanner.pause(); 
 
-    fetch(SERVER_IP, {
-        method: 'POST',
-        mode: 'cors',
-        body: d 
-    }).catch(err => console.log("ส่งเข้าคอมพิวเตอร์ Server ไม่สำเร็จ (แต่ระบบยังทำงานปกติ):", err));
+    // 🌟 ระบบตัดส่วนส่งเข้าคอมพิวเตอร์ Server (SERVER_IP) ออกเรียบร้อยแล้วตามความประสงค์ครับ
 
     let mode = localStorage.getItem('zenMode') || 'SELL';
     let snapImg = takeSnapshot(); 
@@ -884,6 +880,11 @@ async function syncPendingSales() {
     if(pendingCount === 0) {
         badge.style.display = 'none';
         showStatus("✅ ซิงค์ข้อมูลครบแล้ว!");
+        
+        // 🌟 ศิษย์น้องเพิ่มส่วนนี้: สั่งให้โหลดสต็อกล่าสุดจาก Sheets ทันทีหลังซิงค์เสร็จ
+        if (typeof loadSheetData === 'function') {
+            await loadSheetData();
+        }
     } else {
         badge.innerText = `รอยืนยัน ${pendingCount}`;
     }
