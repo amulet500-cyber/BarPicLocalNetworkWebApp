@@ -10,7 +10,7 @@ const SERVER_IP = "http://192.168.1.50:8080/";
 const db = new Dexie("ShopDatabase");
 db.version(1).stores({
     products: 'code, price, cost, stock, supplier',
-    pendingSales: '++id, mode, items, collage1, collage2, timestamp'
+    pendingSales: '++id, mode, items, collage1, collage2, timestamp, deviceName'
 });
 
 // Global Variables
@@ -347,8 +347,6 @@ async function onScanSuccess(d) {
     
     html5QrcodeScanner.pause(); 
 
-    // 🌟 ระบบตัดส่วนส่งเข้าคอมพิวเตอร์ Server (SERVER_IP) ออกเรียบร้อยแล้วตามความประสงค์ครับ
-
     let mode = localStorage.getItem('zenMode') || 'SELL';
     let snapImg = takeSnapshot(); 
     
@@ -490,10 +488,11 @@ async function handleMenuAction(action) {
         showStatus("กำลังส่งข้อมูลเข้า Telegram...");
         speakText("สั่งส่งข้อมูลเข้าเทเลแกรมแล้ว");
         if(navigator.onLine) {
+            let currentDevice = localStorage.getItem('deviceName') || 'ไม่ได้ตั้งชื่อ';
             fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST', mode: 'no-cors',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mode: action })
+                body: JSON.stringify({ mode: action, deviceName: currentDevice })
             });
         } else {
             showStatus("ออฟไลน์: ไม่สามารถส่ง Telegram ได้");
@@ -881,7 +880,6 @@ async function syncPendingSales() {
         badge.style.display = 'none';
         showStatus("✅ ซิงค์ข้อมูลครบแล้ว!");
         
-        // 🌟 ศิษย์น้องเพิ่มส่วนนี้: สั่งให้โหลดสต็อกล่าสุดจาก Sheets ทันทีหลังซิงค์เสร็จ
         if (typeof loadSheetData === 'function') {
             await loadSheetData();
         }
@@ -927,7 +925,6 @@ async function confirmPayment() {
     await finishSale(change, currentReceived); 
 }
 
-// 🌟 ปรับปรุง: ย้ายตำแหน่งการเคลียร์ค่าตะกร้าไปไว้ด้านล่างสุดหลังจากเซฟลงตู้เซฟในเครื่องสำเร็จแล้ว
 async function finishSale(change = 0, received = 0) { 
     if(Object.keys(groupedItems).length === 0) return showStatus("ยังไม่มีสินค้าในตะกร้า!"); 
     
@@ -938,6 +935,7 @@ async function finishSale(change = 0, received = 0) {
     });
 
     const backupItems = { ...groupedItems }; 
+    let currentDevice = localStorage.getItem('deviceName') || 'ไม่ได้ตั้งชื่อ';
 
     try {
         let batch1 = allItems.slice(0, 16); 
@@ -947,7 +945,8 @@ async function finishSale(change = 0, received = 0) {
         
         let billData = { 
             mode: mode, items: itemsToSync, collage1: collage1, collage2: collage2, 
-            total: currentTotal, received: received, change: change, timestamp: Date.now() 
+            total: currentTotal, received: received, change: change, timestamp: Date.now(),
+            deviceName: currentDevice
         };
         
         // 🔒 บันทึกลงฐานข้อมูลออฟไลน์ในเครื่องให้สำเร็จก่อน!
@@ -1042,6 +1041,15 @@ window.onload = async () => {
     applyModeColor(m);
     updateBarcodeTitle();
     
+    // โหลดและเชื่อมข้อมูลชื่อเครื่องมือถือ
+    const deviceNameInputEl = document.getElementById('deviceNameInput');
+    if (deviceNameInputEl) {
+        deviceNameInputEl.value = localStorage.getItem('deviceName') || '';
+        deviceNameInputEl.addEventListener('input', (e) => {
+            localStorage.setItem('deviceName', e.target.value.trim());
+        });
+    }
+
     loadSheetData(); 
     syncPendingSales(); 
     
@@ -1091,3 +1099,4 @@ if ('serviceWorker' in navigator) {
             .catch((err) => console.log('❌ Service Worker Failed', err));
     });
 }
+
