@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
     <meta charset="UTF-8">
     <title>สแกนสินค้า ศิษย์พี่ - Offline First Sync</title>
@@ -75,6 +75,17 @@
 
         .zzz-icon {
             font-size: 75px;
+            letter-spacing: 10px;
+            animation: zzzPulse 2.5s infinite alternate ease-in-out;
+        }
+
+        /* ข้อความ ZZZ ด้านล่างอิโมจิ */
+        .zzz-text {
+            color: #888888;
+            font-size: 1.1em;
+            font-weight: bold;
+            margin-top: 15px;
+            letter-spacing: 2px;
             animation: zzzPulse 2.5s infinite alternate ease-in-out;
         }
 
@@ -136,17 +147,18 @@
         </div>
     </div>
 
-    <!-- โหมดหลับดำสนิท แสดงเฉพาะสัญลักษณ์ zzz -->
+    <!-- โหมดหลับดำสนิท แสดงอิโมจิน่ารักๆ พร้อม ZZZ -->
     <div id="sleepOverlay" onclick="wakeScanner()">
-        <div class="zzz-icon">💤</div>
+        <div class="zzz-icon">😴 😪 💤</div>
+        <div class="zzz-text">(แตะเพื่อปลุก)</div>
     </div>
     
     <div id="flash-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:white; opacity:0; z-index:999999; pointer-events:none; transition: opacity 0.1s;"></div>
     
     <div style="margin-top: -3px; margin-bottom: 10px; text-align: center; position: relative; z-index: 9999;">
         <input type="text" id="manualBarcode" 
-           placeholder="⌨️ พิมพ์ค้นหาบาร์โค้ด 6 ตัวท้าย" 
-           style="width: 60%; height: 5px; padding: 10px; border-radius: 10px; border: 2px solid rgba(127, 117, 7, 0.954); font-size: 14px; background: rgba(232, 229, 229, 0.3); backdrop-filter: blur(5px);color: #2027ef;">
+               placeholder="⌨️ พิมพ์ค้นหาบาร์โค้ด 6 ตัวท้าย" 
+               style="width: 60%; height: 5px; padding: 10px; border-radius: 10px; border: 2px solid rgba(127, 117, 7, 0.954); font-size: 14px; background: rgba(232, 229, 229, 0.3); backdrop-filter: blur(5px);color: #2027ef;">
     </div>
 
     <div id="cart">
