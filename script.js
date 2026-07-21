@@ -23,6 +23,18 @@ let lastScannedTime = 0;
 
 const emojiList = ['😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆', '😉', '😊', '😋', '😎', '😍', '😘', '🥰', '😗', '😙', '😚', '☺️', '🙂', '🤗', '🤩', '😌', '😛', '😜', '😝', '🤤', '😇', '🥳', '🤠'];
 
+// --- Helper อ่านและบันทึกชื่อเครื่อง ป้องกันปัญหา 'ไม่ได้ตั้งชื่อ' ---
+function getDeviceName() {
+    const inputEl = document.getElementById('deviceNameInput');
+    let name = inputEl ? inputEl.value.trim() : '';
+    if (name) {
+        localStorage.setItem('deviceName', name);
+    } else {
+        name = localStorage.getItem('deviceName') || 'ไม่ได้ตั้งชื่อ';
+    }
+    return name;
+}
+
 // --- UI Helpers ---
 function updateBarcodeTitle() {
     const titleElement = document.querySelector('#cart h3');
@@ -72,7 +84,7 @@ function initSmallFullScreenButton() {
     btn.innerHTML = '⛶ เต็มจอ';
     
     btn.style.position = 'fixed';
-    btn.style.top = '52px'; 
+    btn.style.top = '62px'; 
     btn.style.right = '10px'; 
     btn.style.padding = '4px 10px';
     btn.style.fontSize = '12px';
@@ -488,7 +500,7 @@ async function handleMenuAction(action) {
         showStatus("กำลังส่งข้อมูลเข้า Telegram...");
         speakText("สั่งส่งข้อมูลเข้าเทเลแกรมแล้ว");
         if(navigator.onLine) {
-            let currentDevice = localStorage.getItem('deviceName') || 'ไม่ได้ตั้งชื่อ';
+            let currentDevice = getDeviceName(); // ดึงชื่อเครื่องอย่างแม่นยำ
             fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST', mode: 'no-cors',
                 headers: { 'Content-Type': 'application/json' },
@@ -935,7 +947,7 @@ async function finishSale(change = 0, received = 0) {
     });
 
     const backupItems = { ...groupedItems }; 
-    let currentDevice = localStorage.getItem('deviceName') || 'ไม่ได้ตั้งชื่อ';
+    let currentDevice = getDeviceName(); // ดึงชื่อเครื่องอย่างถูกต้อง
 
     try {
         let batch1 = allItems.slice(0, 16); 
@@ -1041,13 +1053,24 @@ window.onload = async () => {
     applyModeColor(m);
     updateBarcodeTitle();
     
-    // โหลดและเชื่อมข้อมูลชื่อเครื่องมือถือ
+    // โหลดและเชื่อมข้อมูลชื่อเครื่องมือถือ (ปรับปรุงให้บันทึกชัวร์ทุกกรณี)
     const deviceNameInputEl = document.getElementById('deviceNameInput');
     if (deviceNameInputEl) {
-        deviceNameInputEl.value = localStorage.getItem('deviceName') || '';
-        deviceNameInputEl.addEventListener('input', (e) => {
-            localStorage.setItem('deviceName', e.target.value.trim());
-        });
+        const savedName = localStorage.getItem('deviceName');
+        if (savedName) {
+            deviceNameInputEl.value = savedName;
+        }
+
+        const saveDeviceName = (e) => {
+            const val = e.target.value.trim();
+            if (val) {
+                localStorage.setItem('deviceName', val);
+            }
+        };
+
+        deviceNameInputEl.addEventListener('input', saveDeviceName);
+        deviceNameInputEl.addEventListener('change', saveDeviceName);
+        deviceNameInputEl.addEventListener('blur', saveDeviceName);
     }
 
     loadSheetData(); 

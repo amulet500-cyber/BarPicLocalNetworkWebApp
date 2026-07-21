@@ -61,6 +61,7 @@
     
     <div id="printArea"></div>
 
+    <!-- แถบ Header หลัก -->
     <div id="headerBar">
         <div style="display:flex; align-items:center;">
             <select id="modeSelect" onchange="handleMenuSelect(this)">
@@ -70,10 +71,10 @@
                 <option value="productData">📑 สินค้า</option>
             </select>
             <!-- ช่องสำหรับใส่ชื่อเครื่องมือถือของแต่ละเครื่อง -->
-            <input type="text" id="deviceNameInput" placeholder="📱 ชื่อเครื่อง" style="background: rgba(0,0,0,0.5); color: #fff; border: 1px solid #fff; padding: 2px; font-size: 0.9em; border-radius: 4px; margin-left: 5px; width: 75px; text-align: center;">
+            <input type="text" id="deviceNameInput" placeholder="📱 ชื่อเครื่อง" style="background: rgba(0,0,0,0.5); color: #fff; border: 1px solid #fff; padding: 2px 4px; font-size: 0.85em; border-radius: 4px; margin-left: 5px; width: 85px; text-align: center;">
         </div>
 
-        <select id="reportMenu" onchange="handleMenuAction(this.value)" style="padding: 5px; border-radius: 5px; max-width: 90px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid #fff;">
+        <select id="reportMenu" onchange="handleMenuAction(this.value)" style="padding: 5px; border-radius: 5px; max-width: 95px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid #fff;">
             <option value="" disabled selected>📚 เมนู</option>
             <option value="force-sync" style="background:#2c3e50;">📥 อัปเดตข้อมูล</option>
             <optgroup label="🖨️ พิมพ์">
@@ -89,11 +90,13 @@
             </optgroup>
         </select>
         
-        <div style="display:flex; align-items:center;">
-            <div id="versionTag" style="font-size: 0.7em; color: #f1c40f; margin-right: 5px;"></div>
-            <div id="clock">--:--:--</div>
-            <div id="syncBadge">รอยืนยัน 0</div>
-        </div>
+        <div id="syncBadge">รอยืนยัน 0</div>
+    </div>
+
+    <!-- แถบ Sub-header ย้ายวันที่และเวลาลงมาบรรทัดใหม่ -->
+    <div id="subHeaderBar">
+        <div id="versionTag" style="font-size: 0.75em; color: #f1c40f; font-weight: bold;"></div>
+        <div id="clock">--:--:--</div>
     </div>
 
     <div id="scanner-wrapper" style="position: relative; width: 100%;">
@@ -196,3 +199,4 @@
     </script>
 </body>
 </html>
+

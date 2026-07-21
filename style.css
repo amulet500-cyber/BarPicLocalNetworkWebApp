@@ -4,12 +4,31 @@ body { margin: 0; padding: 0; background: #000; height: 100vh; overflow: hidden;
 /* --- Header & Layout --- */
 #headerBar { position: fixed; top: 0; left: 0; width: 100%; z-index: 500; display: flex; justify-content: space-between; align-items: center; padding: 5px 10px; color: #fff; height: 35px; box-sizing: border-box; transition: background 0.3s; }
 #modeSelect { background: rgba(0,0,0,0.5); color: #fff; border: 1px solid #fff; padding: 2px; font-size: 0.9em; border-radius: 4px; }
-#clock { font-size: 0.8em; margin: 0 5px; }
+
+/* แถบย่อย Sub-header สำหรับวันที่และเวลา */
+#subHeaderBar {
+    position: fixed;
+    top: 35px;
+    left: 0;
+    width: 100%;
+    height: 24px;
+    z-index: 490;
+    background: rgba(20, 20, 20, 0.85);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 12px;
+    box-sizing: border-box;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    font-size: 0.8em;
+    color: #fff;
+}
+#clock { font-size: 0.85em; font-weight: 500; }
 
 /* --- Scanner Styles --- */
-#reader__dashboard_section { position: fixed; top: 35px; left: 0; width: 100%; z-index: 200; transform: scale(0.5); transform-origin: top center; background: rgba(0,0,0,0.3)!important; border-radius: 10px; padding: 5px!important; }
-#reader { position: fixed; top: 65px; left: 0; width: 100%; height: 35vh; z-index: 1; }
-#sleepOverlay { position: fixed; top: 65px; left: 0; width: 100%; height: 35vh; z-index: 1000; background: rgba(0,0,0,0.9); color: #f1c40f; display: none; justify-content: center; align-items: center; font-size: 1.3em; font-weight: bold; cursor: pointer; text-align: center; }
+#reader__dashboard_section { position: fixed; top: 60px; left: 0; width: 100%; z-index: 200; transform: scale(0.5); transform-origin: top center; background: rgba(0,0,0,0.3)!important; border-radius: 10px; padding: 5px!important; }
+#reader { position: fixed; top: 60px; left: 0; width: 100%; height: 35vh; z-index: 1; }
+#sleepOverlay { position: fixed; top: 60px; left: 0; width: 100%; height: 35vh; z-index: 1000; background: rgba(0,0,0,0.9); color: #f1c40f; display: none; justify-content: center; align-items: center; font-size: 1.3em; font-weight: bold; cursor: pointer; text-align: center; }
 #reader__filescan_input, #reader__filescan_input+span, #reader__filescan_input+a { display: none!important; }
 #reader button { padding: 6px 12px!important; font-size: 1.3em!important; border: 1px solid #f1c40f!important; border-radius: 5px!important; color: #f1c40f!important; background: rgba(50,50,50,0.5)!important; }
 #reader__dashboard_section span, #reader__dashboard_section select { color: #f1c40f!important; }
@@ -53,7 +72,7 @@ body { margin: 0; padding: 0; background: #000; height: 100vh; overflow: hidden;
 /* --- ปรับแต่งโครงสร้าง Scan Preview ปกติทั่วไป --- */
 #scan-preview-overlay {
     position: absolute;
-    top: 80px; 
+    top: 85px; 
     left: 50%; 
     transform: translateX(-50%); 
     width: 120px; 
