@@ -1,8 +1,8 @@
 /**
- * Shop System - v.5.19 (Optimized Edition with Server Sync)
+ * Shop System - v.5.21 (Optimized Edition with Server Sync & AMOLED Saver)
  */
 
-const APP_VERSION = "v.5.19"; 
+const APP_VERSION = "v.5.21"; 
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyEihh74c75U_dnHvrWhCM801b3f78p10ltJrrdZLhkn81Sl3qyb78LoQyq6zQ4FfPZ/exec";
 const SERVER_IP = "http://192.168.1.50:8080/"; 
 
@@ -84,7 +84,7 @@ function initSmallFullScreenButton() {
     btn.innerHTML = '⛶ เต็มจอ';
     
     btn.style.position = 'fixed';
-    btn.style.top = '62px'; 
+    btn.style.top = '70px'; // ขยับลงมาให้อยู่ใต้แถบ SubHeader
     btn.style.right = '10px'; 
     btn.style.padding = '4px 10px';
     btn.style.fontSize = '12px';
@@ -500,7 +500,7 @@ async function handleMenuAction(action) {
         showStatus("กำลังส่งข้อมูลเข้า Telegram...");
         speakText("สั่งส่งข้อมูลเข้าเทเลแกรมแล้ว");
         if(navigator.onLine) {
-            let currentDevice = getDeviceName(); // ดึงชื่อเครื่องอย่างแม่นยำ
+            let currentDevice = getDeviceName(); 
             fetch(GOOGLE_SCRIPT_URL, {
                 method: 'POST', mode: 'no-cors',
                 headers: { 'Content-Type': 'application/json' },
@@ -553,7 +553,7 @@ async function showProductData() {
                 <tr style="border-bottom:1px solid #eee;">
                     <td style="padding:6px; font-weight:bold;">${p.code || '-'}</td>
                     <td style="padding:6px; text-align:right; color:#27ae60;">${Number(p.price || 0).toLocaleString()}</td>
-                    <td style="padding:6px; text-align:right; color:#e74c3c;">***</td>
+                    <td style="padding:6px; text-align:right; color:#e74c3c;">${Number(p.cost || 0).toLocaleString()}</td>
                     <td style="padding:6px; text-align:center;">${p.stock || 0}</td>
                     <td style="padding:6px; text-align:center; background:#f9f9f9;">${p.supplier || '-'}</td>
                 </tr>`;
@@ -637,7 +637,8 @@ function sleepScanner(e) {
     if (isScanning) {
         html5QrcodeScanner.clear().then(() => {
             isScanning = false;
-            document.getElementById('sleepOverlay').style.display = 'flex';
+            const overlay = document.getElementById('sleepOverlay');
+            if (overlay) overlay.style.display = 'flex';
             showStatus("💤 พักสแกนเนอร์");
         }).catch(err => console.error("Sleep Error:", err));
     }
@@ -646,7 +647,8 @@ function sleepScanner(e) {
 function wakeScanner() {
     if (!isScanning) {
         isScanning = true;
-        document.getElementById('sleepOverlay').style.display = 'none';
+        const overlay = document.getElementById('sleepOverlay');
+        if (overlay) overlay.style.display = 'none';
         showStatus("📷 พร้อมสแกน");
         html5QrcodeScanner.render(onScanSuccess);
         if (typeof resetIdleTimer === 'function') resetIdleTimer();
@@ -790,13 +792,13 @@ function renderItem(i) {
     let otherAttr = isBuy ? '' : 'readonly'; 
     let costClass = isSell ? 'hidden-cost' : 'visible-cost';
     let costOnClick = isSell ? 'onclick="toggleCostVisibility(this)"' : '';
-    let imgSource = i.img || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+    let imgSource = i.img || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORD5CYII=';
 
     l.innerHTML = `
         <img src="${imgSource}" 
              onclick="openImageFromCart('${imgSource}')" 
              style="cursor: pointer;" 
-             onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='">
+             onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORD5CYII='">
         <span class="barcode-text">${i.code}</span>
         <input type="number" class="item-input" value="${i.qty}" onfocus="this.select()" onchange="changeQty('${i.code}', this.value)" ${qtyAttr}>
         <input type="number" class="item-input" value="${i.price}" onfocus="this.select()" onchange="updateLocalItem('${i.code}','price',this.value)" ${otherAttr}>
@@ -947,7 +949,7 @@ async function finishSale(change = 0, received = 0) {
     });
 
     const backupItems = { ...groupedItems }; 
-    let currentDevice = getDeviceName(); // ดึงชื่อเครื่องอย่างถูกต้อง
+    let currentDevice = getDeviceName(); 
 
     try {
         let batch1 = allItems.slice(0, 16); 
@@ -961,10 +963,8 @@ async function finishSale(change = 0, received = 0) {
             deviceName: currentDevice
         };
         
-        // 🔒 บันทึกลงฐานข้อมูลออฟไลน์ในเครื่องให้สำเร็จก่อน!
         await db.pendingSales.add(billData);
         
-        // 🧼 เมื่อปลอดภัยชัวร์แล้ว ค่อยทำการเคลียร์หน้าจอและตะกร้าสินค้าทิ้ง
         groupedItems = {}; 
         refreshList(); 
         calculateTotal(); 
@@ -1053,7 +1053,6 @@ window.onload = async () => {
     applyModeColor(m);
     updateBarcodeTitle();
     
-    // โหลดและเชื่อมข้อมูลชื่อเครื่องมือถือ (ปรับปรุงให้บันทึกชัวร์ทุกกรณี)
     const deviceNameInputEl = document.getElementById('deviceNameInput');
     if (deviceNameInputEl) {
         const savedName = localStorage.getItem('deviceName');
@@ -1122,4 +1121,3 @@ if ('serviceWorker' in navigator) {
             .catch((err) => console.log('❌ Service Worker Failed', err));
     });
 }
-

@@ -55,48 +55,77 @@
             color: #000000 !important;
             text-shadow: none !important;
         }
+
+        /* โหมดพักหน้าจอ จอดำสนิท ประหยัดพลังงาน OLED/AMOLED */
+        #sleepOverlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: #000000 !important;
+            z-index: 9999999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .zzz-icon {
+            font-size: 75px;
+            animation: zzzPulse 2.5s infinite alternate ease-in-out;
+        }
+
+        @keyframes zzzPulse {
+            0% { opacity: 0.2; transform: scale(0.85); }
+            100% { opacity: 1; transform: scale(1.15); }
+        }
     </style>
 </head>
 <body onclick="wakeScanner()">
     
     <div id="printArea"></div>
 
-    <!-- แถบ Header หลัก -->
-    <div id="headerBar">
-        <div style="display:flex; align-items:center;">
-            <select id="modeSelect" onchange="handleMenuSelect(this)">
-                <option value="SELL">💰 ขาย</option>
-                <option value="BUY">🛒 ซื้อ</option>
-                <option value="CHECK">🔍 เช็ค</option>
-                <option value="productData">📑 สินค้า</option>
+    <!-- แถบ Header รวม (ครอบทั้ง Header หลัก และ Sub-header ย่อย) -->
+    <div id="topHeaderContainer">
+        <div id="headerBar">
+            <div style="display:flex; align-items:center;">
+                <select id="modeSelect" onchange="handleMenuSelect(this)">
+                    <option value="SELL">💰 ขาย</option>
+                    <option value="BUY">🛒 ซื้อ</option>
+                    <option value="CHECK">🔍 เช็ค</option>
+                    <option value="productData">📑 สินค้า</option>
+                </select>
+                <!-- ช่องสำหรับใส่ชื่อเครื่องมือถือของแต่ละเครื่อง -->
+                <input type="text" id="deviceNameInput" placeholder="📱 ชื่อเครื่อง" style="background: rgba(0,0,0,0.5); color: #fff; border: 1px solid #fff; padding: 2px 4px; font-size: 0.85em; border-radius: 4px; margin-left: 5px; width: 85px; text-align: center;">
+            </div>
+
+            <select id="reportMenu" onchange="handleMenuAction(this.value)" style="padding: 5px; border-radius: 5px; max-width: 95px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid #fff;">
+                <option value="" disabled selected>📚 เมนู</option>
+                <option value="force-sync" style="background:#2c3e50;">📥 อัปเดตข้อมูล</option>
+                <optgroup label="🖨️ พิมพ์">
+                    <option value="print-cart">พิมพ์ ตะกร้าสินค้า</option>
+                    <option value="print-today">พิมพ์ ยอดวันนี้</option>
+                    <option value="print-low">พิมพ์ สต็อกใกล้หมด</option>
+                    <option value="print-best">พิมพ์ สินค้าขายดี</option>
+                </optgroup>
+                <optgroup label="✈️ Telegram">
+                    <option value="tg-low">แจ้งสต็อกใกล้หมด</option>
+                    <option value="tg-best">แจ้งสินค้าขายดี</option>
+                    <option value="tg-info">ข้อมูลร้าน</option>
+                </optgroup>
             </select>
-            <!-- ช่องสำหรับใส่ชื่อเครื่องมือถือของแต่ละเครื่อง -->
-            <input type="text" id="deviceNameInput" placeholder="📱 ชื่อเครื่อง" style="background: rgba(0,0,0,0.5); color: #fff; border: 1px solid #fff; padding: 2px 4px; font-size: 0.85em; border-radius: 4px; margin-left: 5px; width: 85px; text-align: center;">
+            
+            <div id="syncBadge">รอยืนยัน 0</div>
         </div>
 
-        <select id="reportMenu" onchange="handleMenuAction(this.value)" style="padding: 5px; border-radius: 5px; max-width: 95px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid #fff;">
-            <option value="" disabled selected>📚 เมนู</option>
-            <option value="force-sync" style="background:#2c3e50;">📥 อัปเดตข้อมูล</option>
-            <optgroup label="🖨️ พิมพ์">
-                <option value="print-cart">พิมพ์ ตะกร้าสินค้า</option>
-                <option value="print-today">พิมพ์ ยอดวันนี้</option>
-                <option value="print-low">พิมพ์ สต็อกใกล้หมด</option>
-                <option value="print-best">พิมพ์ สินค้าขายดี</option>
-            </optgroup>
-            <optgroup label="✈️ Telegram">
-                <option value="tg-low">แจ้งสต็อกใกล้หมด</option>
-                <option value="tg-best">แจ้งสินค้าขายดี</option>
-                <option value="tg-info">ข้อมูลร้าน</option>
-            </optgroup>
-        </select>
-        
-        <div id="syncBadge">รอยืนยัน 0</div>
-    </div>
-
-    <!-- แถบ Sub-header ย้ายวันที่และเวลาลงมาบรรทัดใหม่ -->
-    <div id="subHeaderBar">
-        <div id="versionTag" style="font-size: 0.75em; color: #f1c40f; font-weight: bold;"></div>
-        <div id="clock">--:--:--</div>
+        <!-- แถบ Sub-header สำหรับวันที่ เวลา และเวอร์ชัน -->
+        <div id="subHeaderBar">
+            <div id="versionTag" style="font-size: 0.75em; color: #f1c40f; font-weight: bold;"></div>
+            <div id="clock">--:--:--</div>
+        </div>
     </div>
 
     <div id="scanner-wrapper" style="position: relative; width: 100%;">
@@ -107,7 +136,11 @@
         </div>
     </div>
 
-    <div id="sleepOverlay" onclick="wakeScanner()">💤 กดที่นี่เพื่อสแกนสินค้า</div>
+    <!-- โหมดหลับดำสนิท แสดงเฉพาะสัญลักษณ์ zzz -->
+    <div id="sleepOverlay" onclick="wakeScanner()">
+        <div class="zzz-icon">💤</div>
+    </div>
+    
     <div id="flash-overlay" style="position:fixed; top:0; left:0; width:100%; height:100%; background:white; opacity:0; z-index:999999; pointer-events:none; transition: opacity 0.1s;"></div>
     
     <div style="margin-top: -3px; margin-bottom: 10px; text-align: center; position: relative; z-index: 9999;">
@@ -199,4 +232,3 @@
     </script>
 </body>
 </html>
-
