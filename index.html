@@ -211,6 +211,27 @@
             0% { opacity: 0.2; transform: scale(0.85); }
             100% { opacity: 1; transform: scale(1.15); }
         }
+
+        /* Styling เพิ่มเติมสำหรับ Settings Modal */
+        .settings-field {
+            text-align: left;
+            margin-bottom: 10px;
+        }
+        .settings-field label {
+            display: block;
+            font-size: 0.85em;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 3px;
+        }
+        .settings-field input {
+            width: 100%;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 0.9em;
+            box-sizing: border-box;
+        }
     </style>
 </head>
 <body onclick="wakeScanner()">
@@ -233,6 +254,7 @@
             <select id="reportMenu" onchange="handleMenuAction(this.value)" style="padding: 5px; border-radius: 5px; max-width: 95px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid #fff;">
                 <option value="" disabled selected>📚 เมนู</option>
                 <option value="force-sync" style="background:#2c3e50;">📥 อัปเดตข้อมูล</option>
+                <option value="open-settings" style="background:#34495e;">⚙️ ตั้งค่าระบบ</option>
                 <optgroup label="🖨️ พิมพ์">
                     <option value="print-cart">พิมพ์ ตะกร้าสินค้า</option>
                     <option value="print-today">พิมพ์ ยอดวันนี้</option>
@@ -352,6 +374,39 @@
             </div>
             
             <input type="file" id="slipFileInput" accept="image/*" style="display:none;" onchange="handleSlipSelected(event)">
+        </div>
+    </div>
+
+    <!-- Modal ตั้งค่าระบบ (Settings Modal) -->
+    <div id="settingsModal" class="overlay-panel">
+        <div class="panel-content" style="max-width: 400px; text-align: left;">
+            <button onclick="closeSettingsModal()" class="close-btn">❌</button>
+            <h3 style="margin: 0 0 15px 0; color: #2c3e50; text-align: center;">⚙️ ตั้งค่าระบบ</h3>
+            
+            <div class="settings-field">
+                <label for="settingBotToken">🤖 Telegram Bot Token:</label>
+                <input type="text" id="settingBotToken" placeholder="วาง Bot Token ที่นี่...">
+            </div>
+
+            <div class="settings-field">
+                <label for="settingChatId">💬 Telegram Chat ID:</label>
+                <input type="text" id="settingChatId" placeholder="วาง Chat ID ที่นี่...">
+            </div>
+
+            <div class="settings-field">
+                <label for="settingWebUrl">🌐 Web App URL (Google Apps Script):</label>
+                <input type="text" id="settingWebUrl" placeholder="https://script.google.com/macros/s/.../exec">
+            </div>
+
+            <div class="settings-field">
+                <label for="settingDeviceName">📱 ชื่อเครื่องมือถือ (ใช้คำนวณยอดขาย):</label>
+                <input type="text" id="settingDeviceName" placeholder="ระบุชื่อเครื่อง เช่น พนักงานA">
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-top: 15px;">
+                <button class="btn-ok" style="background: #27ae60;" onclick="saveSettings()">💾 บันทึกตั้งค่า</button>
+                <button class="btn-clear" style="background: #7f8c8d;" onclick="closeSettingsModal()">ยกเลิก</button>
+            </div>
         </div>
     </div>
 

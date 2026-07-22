@@ -1,15 +1,43 @@
 /**
- * Shop System - v.5.25 (Optimized Google Apps Script Cloud Edition with Slip Live Preview)
+ * Shop System - v.5.26 (Optimized Google Apps Script Cloud Edition with Slip Live Preview & Dynamic Settings)
  */
 
-const APP_VERSION = "v.5.25"; 
-const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyEihh74c75U_dnHvrWhCM801b3f78p10ltJrrdZLhkn81Sl3qyb78LoQyq6zQ4FfPZ/exec";
+const APP_VERSION = "v.5.26"; 
+
+// ค่าดีฟอลต์เริ่มต้น หากยังไม่ได้ตั้งค่าภายนอก
+const DEFAULT_BOT_TOKEN = "8878640086:AAGeUJmjYSUYlMFMJQjl7zXVzxJiTmnFASM";
+const DEFAULT_CHAT_ID = "8652270473";
+const DEFAULT_GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyEihh74c75U_dnHvrWhCM801b3f78p10ltJrrdZLhkn81Sl3qyb78LoQyq6zQ4FfPZ/exec";
+
+// --- Helper อ่านและจัดการค่าคอนฟิกภายนอก ---
+function getBotToken() {
+    return localStorage.getItem('botToken') || DEFAULT_BOT_TOKEN;
+}
+
+function getChatId() {
+    return localStorage.getItem('chatId') || DEFAULT_CHAT_ID;
+}
+
+function getWebAppUrl() {
+    return localStorage.getItem('webAppUrl') || DEFAULT_GOOGLE_SCRIPT_URL;
+}
+
+function getDeviceName() {
+    const inputEl = document.getElementById('deviceNameInput');
+    let name = inputEl ? inputEl.value.trim() : '';
+    if (name) {
+        localStorage.setItem('deviceName', name);
+    } else {
+        name = localStorage.getItem('deviceName') || 'ไม่ได้ตั้งชื่อ';
+    }
+    return name;
+}
 
 // Initializing Database
 const db = new Dexie("ShopDatabase");
 db.version(1).stores({
     products: 'code, price, cost, stock, supplier',
-    pendingSales: '++id, mode, items, collage1, collage2, timestamp, deviceName'
+    pendingSales: '++id, mode, items, collage1, collage2, timestamp, deviceName, botToken, chatId'
 });
 
 // Global Variables
@@ -22,18 +50,6 @@ let lastScannedTime = 0;
 let slipPreviewTimer = null;
 
 const emojiList = ['😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆', '😉', '😊', '😋', '😎', '😍', '😘', '🥰', '😗', '😙', '😚', '☺️', '🙂', '🤗', '🤩', '😌', '😛', '😜', '😝', '🤤', '😇', '🥳', '🤠'];
-
-// --- Helper อ่านและบันทึกชื่อเครื่อง ---
-function getDeviceName() {
-    const inputEl = document.getElementById('deviceNameInput');
-    let name = inputEl ? inputEl.value.trim() : '';
-    if (name) {
-        localStorage.setItem('deviceName', name);
-    } else {
-        name = localStorage.getItem('deviceName') || 'ไม่ได้ตั้งชื่อ';
-    }
-    return name;
-}
 
 // --- UI Helpers ---
 function updateBarcodeTitle() {
@@ -331,7 +347,7 @@ function captureAndSaveToDrive(event, barcodeText) {
     formData.append("barcode", barcodeText);
     formData.append("image64", c.toDataURL('image/jpeg', 0.8));
     
-    fetch(GOOGLE_SCRIPT_URL, { 
+    fetch(getWebAppUrl(), { 
         method: 'POST',
         body: formData,
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
@@ -407,7 +423,7 @@ async function onScanSuccess(d) {
         showStatus("✨ พบสินค้าใหม่! กรุณากรอกข้อมูล");
     }
 
-    fetch(GOOGLE_SCRIPT_URL + "?mode=GET_IMAGE_URL&barcode=" + d)
+    fetch(getWebAppUrl() + "?mode=GET_IMAGE_URL&barcode=" + d)
         .then(res => res.text())
         .then(imageUrl => {
             if (imageUrl && imageUrl !== "NOT_FOUND" && imageUrl !== "") {
@@ -428,6 +444,7 @@ async function onScanSuccess(d) {
     const overlayImg = document.getElementById("last-scanned-img");
     if (overlay && overlayImg) {
         if (previewTimer) clearTimeout(previewTimer);
+        overlay.classList.remove("cart-preview-active");
         overlayImg.src = snapImg;
         overlay.style.display = "flex";
         overlay.style.opacity = "1"; 
@@ -478,13 +495,15 @@ async function handleMenuAction(action) {
     
     if (action === 'force-sync') {
         if(typeof loadSheetData === 'function') await loadSheetData(); 
+    } else if (action === 'open-settings') {
+        openSettingsModal();
     } else if (action === 'print-cart') {
         if(typeof printCartReceipt === 'function') printCartReceipt();
     } else if (action.startsWith('print-')) {
         showStatus("กำลังดึงข้อมูลจากชีตเพื่อพิมพ์...");
         speakText("กำลังประมวลผลข้อมูลการพิมพ์");
         try {
-            let res = await fetch(`${GOOGLE_SCRIPT_URL}?mode=GET_PRINT_DATA&type=${action}`);
+            let res = await fetch(`${getWebAppUrl()}?mode=GET_PRINT_DATA&type=${action}`);
             let result = await res.json();
             if (result.status === 'success') {
                 const pArea = document.getElementById("printArea");
@@ -501,10 +520,15 @@ async function handleMenuAction(action) {
         speakText("สั่งส่งข้อมูลเข้าเทเลแกรมแล้ว");
         if(navigator.onLine) {
             let currentDevice = getDeviceName(); 
-            fetch(GOOGLE_SCRIPT_URL, {
+            fetch(getWebAppUrl(), {
                 method: 'POST', mode: 'no-cors',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ mode: action, deviceName: currentDevice })
+                body: JSON.stringify({ 
+                    mode: action, 
+                    deviceName: currentDevice,
+                    botToken: getBotToken(),
+                    chatId: getChatId()
+                })
             });
         } else {
             showStatus("ออฟไลน์: ไม่สามารถส่ง Telegram ได้");
@@ -525,6 +549,42 @@ function handleMenuSelect(selectElement) {
     } else {
         changeMode(value);
     }
+}
+
+// --- Modal ตั้งค่าระบบ (Settings Handlers) ---
+function openSettingsModal() {
+    document.getElementById('settingBotToken').value = getBotToken();
+    document.getElementById('settingChatId').value = getChatId();
+    document.getElementById('settingWebUrl').value = getWebAppUrl();
+    document.getElementById('settingDeviceName').value = getDeviceName();
+
+    const settingsModal = document.getElementById('settingsModal');
+    if (settingsModal) settingsModal.style.display = 'flex';
+}
+
+function closeSettingsModal() {
+    const settingsModal = document.getElementById('settingsModal');
+    if (settingsModal) settingsModal.style.display = 'none';
+}
+
+function saveSettings() {
+    const token = document.getElementById('settingBotToken').value.trim();
+    const chat = document.getElementById('settingChatId').value.trim();
+    const url = document.getElementById('settingWebUrl').value.trim();
+    const device = document.getElementById('settingDeviceName').value.trim();
+
+    if (token) localStorage.setItem('botToken', token);
+    if (chat) localStorage.setItem('chatId', chat);
+    if (url) localStorage.setItem('webAppUrl', url);
+    if (device) {
+        localStorage.setItem('deviceName', device);
+        const deviceInput = document.getElementById('deviceNameInput');
+        if (deviceInput) deviceInput.value = device;
+    }
+
+    showStatus("✅ บันทึกการตั้งค่าเรียบร้อยแล้ว");
+    speakText("บันทึกการตั้งค่าเรียบร้อยแล้วครับ");
+    closeSettingsModal();
 }
 
 async function showProductData() {
@@ -685,7 +745,8 @@ async function loadSheetData() {
     }
     showStatus("⏳ กำลังซิงค์ฐานข้อมูลล่าสุดเบื้องหลัง...");
     try {
-        const cacheBusterUrl = GOOGLE_SCRIPT_URL + (GOOGLE_SCRIPT_URL.includes('?') ? '&' : '?') + '_=' + new Date().getTime();
+        const url = getWebAppUrl();
+        const cacheBusterUrl = url + (url.includes('?') ? '&' : '?') + '_=' + new Date().getTime();
         let response = await fetch(cacheBusterUrl);
         let data = await response.json();
         let productArray = [];
@@ -876,7 +937,7 @@ async function syncPendingSales() {
     
     for (let bill of pendingBills) {
         try {
-            await fetch(GOOGLE_SCRIPT_URL, {
+            await fetch(getWebAppUrl(), {
                 method: 'POST',
                 mode: 'no-cors', 
                 headers: { 'Content-Type': 'application/json' },
@@ -1115,7 +1176,9 @@ async function finishSale(change = 0, received = 0, slipImage = null) {
         let billData = { 
             mode: mode, items: itemsToSync, collage1: collage1, collage2: collage2, slipImage: slipImage,
             total: currentTotal, received: received, change: change, timestamp: Date.now(),
-            deviceName: currentDevice
+            deviceName: currentDevice,
+            botToken: getBotToken(),
+            chatId: getChatId()
         };
         
         await db.pendingSales.add(billData);
@@ -1175,20 +1238,26 @@ function openImageFromCart(imgSrc) {
     if (overlay && overlayImg) {
         if (previewTimer) clearTimeout(previewTimer);
         
-        overlay.className = "cart-preview-active";
+        overlay.classList.add("cart-preview-active");
         overlayImg.src = imgSrc;
         overlay.style.display = "flex"; 
         overlay.style.opacity = "1"; 
         
         overlay.onclick = function() {
             overlay.style.opacity = "0";
-            setTimeout(() => { overlay.style.display = "none"; }, 300);
+            setTimeout(() => { 
+                overlay.style.display = "none"; 
+                overlay.classList.remove("cart-preview-active");
+            }, 300);
             if (previewTimer) clearTimeout(previewTimer);
         };
         
         previewTimer = setTimeout(() => {
             overlay.style.opacity = "0";
-            setTimeout(() => { overlay.style.display = "none"; }, 300);
+            setTimeout(() => { 
+                overlay.style.display = "none"; 
+                overlay.classList.remove("cart-preview-active");
+            }, 300);
         }, 3000);             
     }
 }
@@ -1256,7 +1325,10 @@ window.onload = async () => {
     if (previewOverlay) {
         previewOverlay.addEventListener("click", function() {
             this.style.opacity = "0";
-            setTimeout(() => { this.style.display = "none"; }, 300);
+            setTimeout(() => { 
+                this.style.display = "none"; 
+                this.classList.remove("cart-preview-active");
+            }, 300);
         });
     }
 
