@@ -290,7 +290,7 @@
         </div>
     </div>
 
-    <!-- Payment Panel สำหรับชำระเงิน (ปรับปรุงใหม่ กระชับ ไม่ล้นจอ) -->
+    <!-- Payment Panel สำหรับชำระเงิน -->
     <div id="paymentPanel" class="overlay-panel">
         <div class="panel-content">
             <button onclick="togglePayment(false)" class="close-btn">❌</button>
@@ -324,12 +324,33 @@
                 <button class="btn-key" onclick="pressNum('00')">00</button>
             </div>
 
-            <!-- ปุ่มกระชับอยู่ในแถวเดียวกัน: 💵 เงินสด และ 📸 สลิปโอน -->
+            <!-- แถบปุ่มดำเนินการ: เงินสด และ สลิปโอน -->
             <div class="pay-action-group">
                 <button class="btn-ok" onclick="confirmPayment()">💵 เงินสด</button>
-                <button class="btn-slip" onclick="triggerSlipCamera(event)">📸 สลิปโอน</button>
+                <button class="btn-slip" onclick="openSlipModal(event)">📸 สลิปโอน</button>
             </div>
-            <!-- ถอด capture="environment" ออก เพื่อให้เปิดได้ทั้งบน PC และมือถือ -->
+        </div>
+    </div>
+
+    <!-- Modal สำหรับแสดงกล้องสด Live Preview และถ่ายสลิปโอนเงิน -->
+    <div id="slipModal" class="overlay-panel">
+        <div class="panel-content" style="max-width: 380px;">
+            <button onclick="closeSlipModal()" class="close-btn">❌</button>
+            <h3 style="margin: 0 0 10px 0; color: #8e44ad; font-size: 1.2em;">📸 ถ่ายสลิปโอนเงิน</h3>
+            
+            <!-- กรอบแสดงวิดีโอกล้องสด Live Feed -->
+            <div style="position: relative; width: 100%; height: 250px; background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 12px; border: 2px solid #8e44ad;">
+                <canvas id="slipPreviewCanvas" style="width: 100%; height: 100%; object-fit: cover;"></canvas>
+                <div style="position: absolute; bottom: 6px; left: 0; width: 100%; text-align: center; color: #fff; font-size: 0.78em; text-shadow: 0 1px 3px rgba(0,0,0,0.9); background: rgba(0,0,0,0.5); padding: 3px 0;">
+                    จัดสลิปให้อยู่ในช่อง แล้วกดปุ่มถ่ายรูป
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 8px;">
+                <button class="btn-slip" style="padding: 12px 4px; font-size: 15px;" onclick="captureSlipFromCamera()">📸 ถ่ายรูปสด</button>
+                <button class="btn-bank" style="background: #34495e; padding: 12px 4px; font-size: 15px;" onclick="triggerSlipFileInput()">📁 เลือกรูป</button>
+            </div>
+            
             <input type="file" id="slipFileInput" accept="image/*" style="display:none;" onchange="handleSlipSelected(event)">
         </div>
     </div>

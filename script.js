@@ -1,8 +1,8 @@
 /**
- * Shop System - v.5.23 (Optimized Google Apps Script Cloud Edition)
+ * Shop System - v.5.25 (Optimized Google Apps Script Cloud Edition with Slip Live Preview)
  */
 
-const APP_VERSION = "v.5.23"; 
+const APP_VERSION = "v.5.25"; 
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyEihh74c75U_dnHvrWhCM801b3f78p10ltJrrdZLhkn81Sl3qyb78LoQyq6zQ4FfPZ/exec";
 
 // Initializing Database
@@ -19,6 +19,7 @@ let isProcessing = false;
 let previewTimer = null;
 let lastScannedCode = "";
 let lastScannedTime = 0;
+let slipPreviewTimer = null;
 
 const emojiList = ['😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆', '😉', '😊', '😋', '😎', '😍', '😘', '🥰', '😗', '😙', '😚', '☺️', '🙂', '🤗', '🤩', '😌', '😛', '😜', '😝', '🤤', '😇', '🥳', '🤠'];
 
@@ -941,10 +942,10 @@ async function confirmPayment() {
     await finishSale(change, currentReceived, null); 
 }
 
-// --- ฟังก์ชันเปิดกล้อง/เลือกรูปสลิปโอนเงิน ---
-function triggerSlipCamera(e) {
+// --- ฟังก์ชันจัดการกล้องสด ถ่ายรูปสลิปโอนเงิน (Slip Live Preview) ---
+function openSlipModal(e) {
     if (e) {
-        e.stopPropagation(); // ป้องกันคลิกส่งต่อไปยัง body
+        e.stopPropagation();
         e.preventDefault();
     }
     
@@ -953,11 +954,88 @@ function triggerSlipCamera(e) {
         return;
     }
     
+    const slipModal = document.getElementById('slipModal');
+    if (slipModal) {
+        slipModal.style.display = 'flex';
+        startSlipCameraPreview();
+    }
+}
+
+function closeSlipModal() {
+    stopSlipCameraPreview();
+    const slipModal = document.getElementById('slipModal');
+    if (slipModal) slipModal.style.display = 'none';
+}
+
+function startSlipCameraPreview() {
+    stopSlipCameraPreview();
+    const canvas = document.getElementById('slipPreviewCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    slipPreviewTimer = setInterval(() => {
+        const v = document.getElementsByTagName('video')[0];
+        if (v && v.videoWidth > 0) {
+            canvas.width = v.videoWidth;
+            canvas.height = v.videoHeight;
+            ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+        } else {
+            ctx.fillStyle = "#000000";
+            ctx.fillRect(0, 0, canvas.width || 300, canvas.height || 300);
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "14px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("กำลังดึงสัญญาณกล้อง...", (canvas.width || 300) / 2, (canvas.height || 300) / 2);
+        }
+    }, 60); // แสดงภาพสดอัปเดต ~15-20 เฟรมต่อวินาที
+}
+
+function stopSlipCameraPreview() {
+    if (slipPreviewTimer) {
+        clearInterval(slipPreviewTimer);
+        slipPreviewTimer = null;
+    }
+}
+
+async function captureSlipFromCamera() {
+    const v = document.getElementsByTagName('video')[0];
+    if (!v || v.videoWidth === 0) {
+        alert("❌ ไม่พบสัญญาณกล้องถ่ายรูป");
+        return;
+    }
+
+    // เสียงชัตเตอร์และแฟลช
+    new Audio('https://actions.google.com/sounds/v1/camera/camera_shutter_click.ogg').play();
+    const flash = document.getElementById('flash-overlay');
+    if (flash) { 
+        flash.style.opacity = 1; 
+        setTimeout(() => flash.style.opacity = 0, 100); 
+    }
+
+    showStatus("⏳ กำลังย่อและประมวลผลรูปสลิป...");
+
+    const c = document.createElement('canvas');
+    c.width = v.videoWidth;
+    c.height = v.videoHeight;
+    c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+
+    // แปลงภาพเป็น Base64 ความละเอียดและคุณภาพกระชับเพื่อส่ง Telegram
+    const compressedBase64 = c.toDataURL('image/jpeg', 0.75);
+
+    closeSlipModal();
+    const paymentPanel = document.getElementById('paymentPanel');
+    if (paymentPanel) paymentPanel.style.display = 'none';
+
+    currentReceived = currentTotal;
+    await finishSale(0, currentTotal, compressedBase64);
+}
+
+function triggerSlipFileInput() {
     const slipInput = document.getElementById('slipFileInput');
     if (slipInput) {
-        slipInput.click(); // เรียกเปิดกล้อง/ไฟล์
+        slipInput.click();
     } else {
-        alert("❌ ไม่พบช่องอัปโหลดสลิป (slipFileInput)");
+        alert("❌ ไม่พบช่องอัปโหลดสลิป");
     }
 }
 
@@ -967,10 +1045,9 @@ async function handleSlipSelected(event) {
 
     showStatus("⏳ กำลังย่อและประมวลผลรูปสลิป...");
     try {
-        // ย่อรูปสลิปให้อยู่ในช่วงไม่เกิน 800px และบีบอัดคุณภาพ JPEG เหลือ 75% (~100-200KB)
         const compressedBase64 = await resizeImageFile(file, 800, 800, 0.75);
         
-        // ปิด Panel ชำระเงิน
+        closeSlipModal();
         const panel = document.getElementById('paymentPanel');
         if (panel) panel.style.display = 'none';
         
@@ -980,11 +1057,11 @@ async function handleSlipSelected(event) {
         console.error("ประมวลผลสลิปล้มเหลว:", err);
         alert("เกิดข้อผิดพลาดในการถ่าย/อ่านรูปสลิป: " + (err.message || err));
     } finally {
-        event.target.value = ""; // เคลียร์ค่าไฟล์เพื่อรอรับภาพใหม่ครั้งถัดไป
+        event.target.value = ""; 
     }
 }
 
-// --- ฟังก์ชันย่อขนาดภาพผ่าน HTML5 Canvas อัตโนมัติก่อนส่ง Telegram ---
+// --- ฟังก์ชันย่อขนาดภาพผ่าน HTML5 Canvas อัตโนมัติ ---
 function resizeImageFile(file, maxWidth, maxHeight, quality) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
