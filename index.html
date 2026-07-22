@@ -11,27 +11,147 @@
     <!-- ไฟล์ CSS -->
     <link rel="stylesheet" href="style.css">
     <style>
-        /* CSS สำหรับ Payment Panel ที่อัปเดตใหม่ */
-        .overlay-panel { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 999999; justify-content: center; align-items: center; }
-        .panel-content { background: white; padding: 25px; border-radius: 30px; width: 90%; max-width: 400px; text-align: center; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-        .close-btn { position: absolute; top: 15px; right: 20px; background: none; border: none; font-size: 24px; cursor: pointer; }
+        /* CSS สำหรับ Payment Panel ปรับแต่งพิเศษ ป้องกันจอล้น (No Overflow) */
+        .overlay-panel { 
+            display: none; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0,0,0,0.7); 
+            z-index: 999999; 
+            justify-content: center; 
+            align-items: center; 
+        }
+        .panel-content { 
+            background: white; 
+            padding: 15px 18px; 
+            border-radius: 20px; 
+            width: 90%; 
+            max-width: 380px; 
+            text-align: center; 
+            position: relative; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3); 
+            max-height: 98vh;
+            box-sizing: border-box;
+        }
+        .close-btn { 
+            position: absolute; 
+            top: 10px; 
+            right: 15px; 
+            background: none; 
+            border: none; 
+            font-size: 20px; 
+            cursor: pointer; 
+        }
         
-        /* เพิ่มขนาดตัวเลข 20% */
-        .highlight-text { font-size: 1.2em; font-weight: bold; color: #d32f2f; margin: 5px 0; }
+        .highlight-text { 
+            font-size: 1.1em; 
+            font-weight: bold; 
+            color: #d32f2f; 
+            margin: 3px 0; 
+        }
         
-        .grid-bank { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
-        .grid-key { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
-        .btn-bank { padding: 15px; border-radius: 10px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; background: #3498db; color: white; }
-        .btn-key { padding: 15px; border-radius: 10px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; background: #ecf0f1; }
-        .btn-ok { padding: 15px; border-radius: 10px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; background: #27ae60; color: white; grid-column: span 2; }
-        .btn-clear { padding: 15px; border-radius: 10px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; background: #e74c3c; color: white; }
+        .grid-bank { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 6px; 
+            margin-top: 8px; 
+        }
+        .grid-key { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 6px; 
+            margin-top: 8px; 
+        }
+        .btn-bank { 
+            padding: 8px 4px; 
+            border-radius: 8px; 
+            border: none; 
+            font-size: 15px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            background: #3498db; 
+            color: white; 
+        }
+        .btn-key { 
+            padding: 8px 4px; 
+            border-radius: 8px; 
+            border: none; 
+            font-size: 16px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            background: #ecf0f1; 
+        }
+        .btn-clear { 
+            padding: 8px 4px; 
+            border-radius: 8px; 
+            border: none; 
+            font-size: 16px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            background: #e74c3c; 
+            color: white; 
+        }
+
+        /* แถบปุ่มดำเนินการคู่ล่าง: เงินสด และ สลิปโอน วางเคียงข้างกัน */
+        .pay-action-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .btn-ok { 
+            flex: 1;
+            padding: 10px 4px; 
+            border-radius: 10px; 
+            border: none; 
+            font-size: 15px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            background: #27ae60; 
+            color: white; 
+            box-shadow: 0 3px 8px rgba(39, 174, 96, 0.3);
+            transition: all 0.2s ease;
+        }
+        .btn-slip { 
+            flex: 1;
+            padding: 10px 4px; 
+            border-radius: 10px; 
+            border: none; 
+            font-size: 15px; 
+            font-weight: bold; 
+            cursor: pointer; 
+            background: linear-gradient(135deg, #8e44ad, #9b59b6); 
+            color: white; 
+            box-shadow: 0 3px 8px rgba(142, 68, 173, 0.4); 
+            transition: all 0.2s ease; 
+        }
+        .btn-slip:active, .btn-ok:active { 
+            transform: scale(0.98); 
+        }
+
+        /* ล็อกแถบวัน เวลา และเวอร์ชัน (Sub-header) */
+        #topHeaderContainer {
+            width: 100%;
+        }
+        #subHeaderBar {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            background: #000000 !important;
+            color: #ffffff !important;
+            padding: 4px 10px !important;
+            font-size: 0.8em !important;
+            height: auto !important;
+            box-sizing: border-box !important;
+        }
 
         /* เอฟเฟกต์ขยาย-หด สำหรับทุกช่องกรอกข้อมูลในตาราง */
         .item-input {
             transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease !important;
         }
         
-        /* เมื่อช่องถูกจิ้ม (Focus) ให้ขยายร่างและลอยขึ้นมา */
         .item-input:focus {
             transform: scale(2.2) !important;
             z-index: 99999 !important;
@@ -50,7 +170,6 @@
             transition: all 0.2s ease !important;
         }
 
-        /* เมื่อจิ้มที่ช่อง "ทุน" ให้ตัวเลขชัดเจนขึ้นพร้อมขยายร่าง */
         .cost-input:focus {
             color: #000000 !important;
             text-shadow: none !important;
@@ -79,7 +198,6 @@
             animation: zzzPulse 2.5s infinite alternate ease-in-out;
         }
 
-        /* ข้อความ ZZZ ด้านล่างอิโมจิ */
         .zzz-text {
             color: #888888;
             font-size: 1.1em;
@@ -99,7 +217,7 @@
     
     <div id="printArea"></div>
 
-    <!-- แถบ Header รวม (ครอบทั้ง Header หลัก และ Sub-header ย่อย) -->
+    <!-- แถบ Header รวม -->
     <div id="topHeaderContainer">
         <div id="headerBar">
             <div style="display:flex; align-items:center;">
@@ -109,7 +227,6 @@
                     <option value="CHECK">🔍 เช็ค</option>
                     <option value="productData">📑 สินค้า</option>
                 </select>
-                <!-- ช่องสำหรับใส่ชื่อเครื่องมือถือของแต่ละเครื่อง -->
                 <input type="text" id="deviceNameInput" placeholder="📱 ชื่อเครื่อง" style="background: rgba(0,0,0,0.5); color: #fff; border: 1px solid #fff; padding: 2px 4px; font-size: 0.85em; border-radius: 4px; margin-left: 5px; width: 85px; text-align: center;">
             </div>
 
@@ -132,9 +249,8 @@
             <div id="syncBadge">รอยืนยัน 0</div>
         </div>
 
-        <!-- แถบ Sub-header สำหรับวันที่ เวลา และเวอร์ชัน -->
         <div id="subHeaderBar">
-            <div id="versionTag" style="font-size: 0.75em; color: #f1c40f; font-weight: bold;"></div>
+            <div id="versionTag" style="font-size: 0.9em; color: #f1c40f; font-weight: bold;"></div>
             <div id="clock">--:--:--</div>
         </div>
     </div>
@@ -147,7 +263,7 @@
         </div>
     </div>
 
-    <!-- โหมดหลับดำสนิท แสดงอิโมจิน่ารักๆ พร้อม ZZZ -->
+    <!-- โหมดหลับดำสนิท -->
     <div id="sleepOverlay" onclick="wakeScanner()">
         <div class="zzz-icon">😴 😪 💤</div>
         <div class="zzz-text">(แตะเพื่อปลุก)</div>
@@ -174,13 +290,13 @@
         </div>
     </div>
 
-    <!-- Payment Panel สำหรับชำระเงิน -->
+    <!-- Payment Panel สำหรับชำระเงิน (ปรับปรุงใหม่ กระชับ ไม่ล้นจอ) -->
     <div id="paymentPanel" class="overlay-panel">
         <div class="panel-content">
             <button onclick="togglePayment(false)" class="close-btn">❌</button>
             
             <div class="status-box">
-                <h2 id="totalDisplay" style="margin: 0;">ยอดรวม: 0 บาท</h2>
+                <h3 id="totalDisplay" style="margin: 0; font-size: 1.2em; color: #2c3e50;">ยอดรวม: 0 บาท</h3>
                 <div class="highlight-text">รับมา: <span id="receivedDisplay">0</span> บาท</div>
                 <div class="highlight-text">ทอน: <span id="changeDisplay">0</span> บาท</div>
             </div>
@@ -205,8 +321,16 @@
                 <button class="btn-key" onclick="pressNum(9)">9</button>
                 <button class="btn-clear" onclick="clearCash()">C</button>
                 <button class="btn-key" onclick="pressNum(0)">0</button>
-                <button class="btn-ok" onclick="confirmPayment()">ชำระเงิน</button>
+                <button class="btn-key" onclick="pressNum('00')">00</button>
             </div>
+
+            <!-- ปุ่มกระชับอยู่ในแถวเดียวกัน: 💵 เงินสด และ 📸 สลิปโอน -->
+            <div class="pay-action-group">
+                <button class="btn-ok" onclick="confirmPayment()">💵 เงินสด</button>
+                <button class="btn-slip" onclick="triggerSlipCamera(event)">📸 สลิปโอน</button>
+            </div>
+            <!-- ถอด capture="environment" ออก เพื่อให้เปิดได้ทั้งบน PC และมือถือ -->
+            <input type="file" id="slipFileInput" accept="image/*" style="display:none;" onchange="handleSlipSelected(event)">
         </div>
     </div>
 
@@ -224,10 +348,8 @@
         </div>
     </dialog>
 
-    <!-- เรียกใช้สคริปต์ควบคุมหลัก -->
     <script src="script.js"></script>
 
-    <!-- โค้ดดักจับการกด Enter เพื่อให้ช่องหดกลับ -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const itemList = document.getElementById('itemList');
@@ -235,7 +357,7 @@
                 itemList.addEventListener('keydown', function(event) {
                     if (event.target && event.target.classList.contains('item-input')) {
                         if (event.key === 'Enter') {
-                            event.target.blur(); // บังคับให้ช่องหดกลับ
+                            event.target.blur();
                         }
                     }
                 });

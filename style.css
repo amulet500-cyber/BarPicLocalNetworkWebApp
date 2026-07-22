@@ -57,17 +57,21 @@ body { margin: 0; padding: 0; background: #000; height: 100vh; overflow: hidden;
 .item-row img { width: 23px; height: 23px; object-fit: cover; border: 1px solid #ccc; }
 .item-input { width: 100%; padding: 2px; text-align: center; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.3); border-radius: 3px; color: #fff; box-sizing: border-box; font-size: 1.05em; }
 
-/* --- Payment Panel & Components --- */
+/* --- Payment Panel Styles --- */
 .overlay-panel { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 999999; justify-content: center; align-items: center; }
-.panel-content { background: white; padding: 25px; border-radius: 30px; width: 90%; max-width: 400px; text-align: center; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-.close-btn { position: absolute; top: 15px; right: 20px; background: none; border: none; font-size: 24px; cursor: pointer; }
-.highlight-text { font-size: 1.2em; font-weight: bold; color: #d32f2f; margin: 5px 0; }
-.grid-bank { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
-.grid-key { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
-.btn-bank { padding: 15px; border-radius: 10px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; background: #3498db; color: white; }
-.btn-key { padding: 15px; border-radius: 10px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; background: #ecf0f1; }
-.btn-ok { padding: 15px; border-radius: 10px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; background: #27ae60; color: white; grid-column: span 2; }
-.btn-clear { padding: 15px; border-radius: 10px; border: none; font-size: 18px; font-weight: bold; cursor: pointer; background: #e74c3c; color: white; }
+.panel-content { background: white; padding: 15px 18px; border-radius: 20px; width: 90%; max-width: 380px; text-align: center; position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.3); max-height: 98vh; box-sizing: border-box; }
+.close-btn { position: absolute; top: 10px; right: 15px; background: none; border: none; font-size: 20px; cursor: pointer; }
+.highlight-text { font-size: 1.1em; font-weight: bold; color: #d32f2f; margin: 3px 0; }
+.grid-bank { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+.grid-key { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+.btn-bank { padding: 8px 4px; border-radius: 8px; border: none; font-size: 15px; font-weight: bold; cursor: pointer; background: #3498db; color: white; }
+.btn-key { padding: 8px 4px; border-radius: 8px; border: none; font-size: 16px; font-weight: bold; cursor: pointer; background: #ecf0f1; }
+.btn-clear { padding: 8px 4px; border-radius: 8px; border: none; font-size: 16px; font-weight: bold; cursor: pointer; background: #e74c3c; color: white; }
+
+.pay-action-group { display: flex; gap: 8px; margin-top: 10px; }
+.btn-ok { flex: 1; padding: 10px 4px; border-radius: 10px; border: none; font-size: 15px; font-weight: bold; cursor: pointer; background: #27ae60; color: white; box-shadow: 0 3px 8px rgba(39, 174, 96, 0.3); }
+.btn-slip { flex: 1; padding: 10px 4px; border-radius: 10px; border: none; font-size: 15px; font-weight: bold; cursor: pointer; background: linear-gradient(135deg, #8e44ad, #9b59b6); color: white; box-shadow: 0 3px 8px rgba(142, 68, 173, 0.4); transition: all 0.2s ease; }
+.btn-slip:active, .btn-ok:active { transform: scale(0.98); }
 
 /* --- Buttons & Utilities --- */
 .btn-delete { background: #e74c3c; color: #fff; border: none; border-radius: 3px; padding: 3px; font-weight: 700; cursor: pointer; }
@@ -84,7 +88,7 @@ body { margin: 0; padding: 0; background: #000; height: 100vh; overflow: hidden;
 #printArea { display: none; position: fixed; top: 35px; left: 0; width: 100%; height: 45vh; z-index: 250; background: #fff; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
 @media print { body > *:not(#printArea) { display: none !important; } #printArea { display: block !important; position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; } }
 
-/* --- ปรับแต่งโครงสร้าง Scan Preview ปกติทั่วไป --- */
+/* --- Scan Preview Overlay --- */
 #scan-preview-overlay {
     position: absolute;
     top: 85px; 
@@ -107,7 +111,6 @@ body { margin: 0; padding: 0; background: #000; height: 100vh; overflow: hidden;
     cursor: pointer;
 }
 
-/* เพิ่มคลาสสไตล์สำหรับกางรูปแบบขยายใหญ่กลางจอ ไม่ขัดขวางหัวกล้องด้านบน */
 #scan-preview-overlay.cart-preview-active {
     position: fixed;
     top: 45vh; 
@@ -124,7 +127,6 @@ body { margin: 0; padding: 0; background: #000; height: 100vh; overflow: hidden;
     box-shadow: 0 15px 35px rgba(0,0,0,0.8);
 }
 
-/* บังคับล้างค่าเบลอทิ้งสำหรับช่องทุนที่ไม่ใช่โหมดขาย */
 .cost-input:not(.hidden-cost) {
     filter: none !important;      
     opacity: 1 !important;        

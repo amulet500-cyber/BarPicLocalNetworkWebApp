@@ -1,10 +1,9 @@
 /**
- * Shop System - v.5.21 (Optimized Edition with Server Sync & AMOLED Saver)
+ * Shop System - v.5.23 (Optimized Google Apps Script Cloud Edition)
  */
 
-const APP_VERSION = "v.5.21"; 
+const APP_VERSION = "v.5.23"; 
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyEihh74c75U_dnHvrWhCM801b3f78p10ltJrrdZLhkn81Sl3qyb78LoQyq6zQ4FfPZ/exec";
-const SERVER_IP = "http://192.168.1.50:8080/"; 
 
 // Initializing Database
 const db = new Dexie("ShopDatabase");
@@ -23,7 +22,7 @@ let lastScannedTime = 0;
 
 const emojiList = ['😀', '😁', '😂', '🤣', '😃', '😄', '😅', '😆', '😉', '😊', '😋', '😎', '😍', '😘', '🥰', '😗', '😙', '😚', '☺️', '🙂', '🤗', '🤩', '😌', '😛', '😜', '😝', '🤤', '😇', '🥳', '🤠'];
 
-// --- Helper อ่านและบันทึกชื่อเครื่อง ป้องกันปัญหา 'ไม่ได้ตั้งชื่อ' ---
+// --- Helper อ่านและบันทึกชื่อเครื่อง ---
 function getDeviceName() {
     const inputEl = document.getElementById('deviceNameInput');
     let name = inputEl ? inputEl.value.trim() : '';
@@ -84,7 +83,7 @@ function initSmallFullScreenButton() {
     btn.innerHTML = '⛶ เต็มจอ';
     
     btn.style.position = 'fixed';
-    btn.style.top = '70px'; // ขยับลงมาให้อยู่ใต้แถบ SubHeader
+    btn.style.top = '70px';
     btn.style.right = '10px'; 
     btn.style.padding = '4px 10px';
     btn.style.fontSize = '12px';
@@ -919,7 +918,10 @@ function togglePayment(show, total) {
 }
 
 function addCash(amt) { currentReceived += amt; updateUI(); }
-function pressNum(n) { currentReceived = parseInt((currentReceived === 0 ? "" : currentReceived.toString()) + n.toString()); updateUI(); }
+function pressNum(n) { 
+    currentReceived = parseInt((currentReceived === 0 ? "" : currentReceived.toString()) + n.toString()) || 0; 
+    updateUI(); 
+}
 function clearCash() { currentReceived = 0; updateUI(); }
 
 function updateUI() {
@@ -936,10 +938,86 @@ async function confirmPayment() {
     let change = currentReceived - currentTotal;
     document.getElementById("changeDisplay").innerText = change;
     document.getElementById('paymentPanel').style.display = 'none';
-    await finishSale(change, currentReceived); 
+    await finishSale(change, currentReceived, null); 
 }
 
-async function finishSale(change = 0, received = 0) { 
+// --- ฟังก์ชันเปิดกล้อง/เลือกรูปสลิปโอนเงิน ---
+function triggerSlipCamera(e) {
+    if (e) {
+        e.stopPropagation(); // ป้องกันคลิกส่งต่อไปยัง body
+        e.preventDefault();
+    }
+    
+    if (typeof groupedItems === 'undefined' || Object.keys(groupedItems).length === 0) {
+        alert("ยังไม่มีสินค้าในตะกร้าครับ");
+        return;
+    }
+    
+    const slipInput = document.getElementById('slipFileInput');
+    if (slipInput) {
+        slipInput.click(); // เรียกเปิดกล้อง/ไฟล์
+    } else {
+        alert("❌ ไม่พบช่องอัปโหลดสลิป (slipFileInput)");
+    }
+}
+
+async function handleSlipSelected(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    showStatus("⏳ กำลังย่อและประมวลผลรูปสลิป...");
+    try {
+        // ย่อรูปสลิปให้อยู่ในช่วงไม่เกิน 800px และบีบอัดคุณภาพ JPEG เหลือ 75% (~100-200KB)
+        const compressedBase64 = await resizeImageFile(file, 800, 800, 0.75);
+        
+        // ปิด Panel ชำระเงิน
+        const panel = document.getElementById('paymentPanel');
+        if (panel) panel.style.display = 'none';
+        
+        currentReceived = currentTotal;
+        await finishSale(0, currentTotal, compressedBase64);
+    } catch (err) {
+        console.error("ประมวลผลสลิปล้มเหลว:", err);
+        alert("เกิดข้อผิดพลาดในการถ่าย/อ่านรูปสลิป: " + (err.message || err));
+    } finally {
+        event.target.value = ""; // เคลียร์ค่าไฟล์เพื่อรอรับภาพใหม่ครั้งถัดไป
+    }
+}
+
+// --- ฟังก์ชันย่อขนาดภาพผ่าน HTML5 Canvas อัตโนมัติก่อนส่ง Telegram ---
+function resizeImageFile(file, maxWidth, maxHeight, quality) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                let width = img.width;
+                let height = img.height;
+                if (width > maxWidth || height > maxHeight) {
+                    if (width / height > maxWidth / maxHeight) {
+                        height = Math.round((height * maxWidth) / width);
+                        width = maxWidth;
+                    } else {
+                        width = Math.round((width * maxHeight) / height);
+                        height = maxHeight;
+                    }
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+async function finishSale(change = 0, received = 0, slipImage = null) { 
     if(Object.keys(groupedItems).length === 0) return showStatus("ยังไม่มีสินค้าในตะกร้า!"); 
     
     let mode = localStorage.getItem('zenMode') || 'SELL';
@@ -958,7 +1036,7 @@ async function finishSale(change = 0, received = 0) {
         let collage2 = await createCollage(batch2);
         
         let billData = { 
-            mode: mode, items: itemsToSync, collage1: collage1, collage2: collage2, 
+            mode: mode, items: itemsToSync, collage1: collage1, collage2: collage2, slipImage: slipImage,
             total: currentTotal, received: received, change: change, timestamp: Date.now(),
             deviceName: currentDevice
         };
@@ -970,14 +1048,16 @@ async function finishSale(change = 0, received = 0) {
         calculateTotal(); 
         updateCameraButton();
 
-        if (mode === 'SELL') {
+        if (slipImage) {
+            speakText(`บันทึกสลิปโอนเงิน ${currentTotal} บาท เรียบร้อยแล้วครับ`);
+        } else if (mode === 'SELL') {
             speakText(`ยอดรวม ${currentTotal} บาท รับเงิน ${received} บาท ทอน ${change} บาท ขอบคุณครับ`);
         } else {
             speakText(currentTotal + " บาท ขอบคุณครับ");
         }
         
         syncPendingSales();
-        showStatus("✅ บันทึกการขายเรียบร้อย");
+        showStatus(slipImage ? "✅ บันทึกสลิปและปิดยอดขายสำเร็จ" : "✅ บันทึกการขายเรียบร้อย");
         
         billData = null;
         itemsToSync = null;
